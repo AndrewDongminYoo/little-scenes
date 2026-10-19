@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { NavigationBar } from 'expo-navigation-bar';
 import { Canvas, Group, Skia } from '@shopify/react-native-skia';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import {
@@ -26,7 +27,8 @@ import {
   defaults,
   fitRect,
   freezeFrame,
-  nextClock,
+  advanceClocks,
+  TRAIL_FADE_MS,
   pushTrail,
   toLogicalPoint,
   validateText,
@@ -52,7 +54,7 @@ import { scenes } from '../../scenes/registry';
 const NONE: number[] = [];
 const PALETTES = [
   ['meadow', '들꽃'],
-  ['red', '붉은 실'],
+  ['dancheong', '단청'],
   ['navy', '남색 실'],
 ] as const;
 export default function SceneRoute() {
@@ -72,6 +74,7 @@ function Scene({ id }: { id: SceneId }) {
     [editing, setEditing] = useState(false),
     [immersive, setImmersive] = useState(false),
     [playing, setPlaying] = useState(true),
+    [touchRunning, setTouchRunning] = useState(false),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState(''),
     [hint, setHint] = useState(false),
@@ -80,6 +83,8 @@ function Scene({ id }: { id: SceneId }) {
   const gate = useRef(createShareGate());
   const mounted = useRef(true);
   const clock = useSharedValue(0),
+    interactionClock = useSharedValue(0),
+    restoring = useSharedValue(false),
     active = useSharedValue(false),
     touchX = useSharedValue(-100),
     touchY = useSharedValue(-100),
@@ -149,19 +154,44 @@ function Scene({ id }: { id: SceneId }) {
   const finishEmbroidery = useCallback(() => {
     if (mounted.current) setPlaying(false);
   }, []);
+  const wakeTouch = useCallback(() => setTouchRunning(true), []);
+  const finishTouch = useCallback(() => {
+    if (mounted.current) setTouchRunning(false);
+  }, []);
   const loop = useFrameCallback((frame) => {
-    if (active.get() && !shareFrozen.get()) {
-      clock.set(nextClock(clock.get(), Math.min(frame.timeSincePreviousFrame ?? 0, 50), true, id));
-      if (id === 'embroidery' && clock.get() >= 1600) {
-        active.set(false);
-        scheduleOnRN(finishEmbroidery);
-      }
+    if (shareFrozen.get()) return;
+    const delta = Math.min(frame.timeSincePreviousFrame ?? 0, 50);
+    const next = advanceClocks(
+      clock.get(),
+      interactionClock.get(),
+      delta,
+      active.get(),
+      restoring.get(),
+      id,
+    );
+    clock.set(next.time);
+    interactionClock.set(next.interactionTime);
+    if (active.get() && id === 'embroidery' && next.time >= 1600) {
+      active.set(false);
+      scheduleOnRN(finishEmbroidery);
+    }
+    const points = trail.get();
+    if (
+      restoring.get() &&
+      points.length &&
+      next.interactionTime - points[points.length - 1] >= TRAIL_FADE_MS
+    ) {
+      restoring.set(false);
+      trail.set([]);
+      scheduleOnRN(finishTouch);
     }
   }, false);
   useEffect(() => {
-    loop.setActive(playing && foreground && focused && loaded && ready && !busy && !editing);
+    loop.setActive(
+      (playing || touchRunning) && foreground && focused && loaded && ready && !busy && !editing,
+    );
     return () => loop.setActive(false);
-  }, [loop, playing, foreground, focused, loaded, ready, busy, editing]);
+  }, [loop, playing, touchRunning, foreground, focused, loaded, ready, busy, editing]);
   const reveal = useDerivedValue(() => Math.min(1, clock.get() / 1600));
   const shadow = useDerivedValue(() =>
     shadowOffset(touchX.get(), touchY.get(), touchStrength.get()),
@@ -171,7 +201,7 @@ function Scene({ id }: { id: SceneId }) {
   const runningPath = useDerivedValue(() => runningTrails(Skia, running, clock.get()), [running]);
   const runningDrops = useDerivedValue(() => runningXforms(Skia, running, clock.get()), [running]);
   const trailSprites = useDerivedValue(() => trailXforms(Skia, trail.get()));
-  const trailAlphas = useDerivedValue(() => trailColors(trail.get(), clock.get()));
+  const trailAlphas = useDerivedValue(() => trailColors(trail.get(), interactionClock.get()));
   const rect = fitRect(viewport.width, viewport.height);
   const exit = useCallback(() => setImmersive(false), []);
   const pan = Gesture.Pan()
@@ -183,7 +213,13 @@ function Scene({ id }: { id: SceneId }) {
         touchX.set(p.x);
         touchY.set(p.y);
         touchStrength.set(1);
-        if (id === 'rain') trail.set(pushTrail(trail.get(), p.x, p.y, clock.get()));
+        if (id === 'rain') {
+          if (!restoring.get()) {
+            restoring.set(true);
+            scheduleOnRN(wakeTouch);
+          }
+          trail.set(pushTrail(trail.get(), p.x, p.y, interactionClock.get()));
+        }
       }
     })
     .onFinalize(() => {
@@ -218,6 +254,8 @@ function Scene({ id }: { id: SceneId }) {
     if ('text' in patch || 'writing' in patch) {
       clock.set(reduced.current ? 1600 : 0);
       trail.set([]);
+      restoring.set(false);
+      setTouchRunning(false);
       setPlaying(!reduced.current);
     }
     saveSettings(next).catch(() => {
@@ -248,6 +286,7 @@ function Scene({ id }: { id: SceneId }) {
             cancelAnimation(touchStrength);
             return {
               time: clock.get(),
+              interactionTime: interactionClock.get(),
               reveal: Math.min(1, clock.get() / 1600),
               touch: {
                 x: touchX.get(),
@@ -279,6 +318,7 @@ function Scene({ id }: { id: SceneId }) {
       edges={immersive ? [] : ['top', 'bottom']}
     >
       <StatusBar hidden={immersive} style="dark" />
+      {focused && <NavigationBar hidden={immersive} style="dark" />}
       {!immersive && (
         <View style={styles.header}>
           <Button label="뒤로" onPress={() => router.back()} disabled={busy} />
@@ -352,7 +392,10 @@ function Scene({ id }: { id: SceneId }) {
           >
             {id === 'embroidery' ? (
               <>
-                {PALETTES.map(([value, label]) => (
+                {(settings.thread === 'red'
+                  ? [...PALETTES, ['red', '붉은 실'] as const]
+                  : PALETTES
+                ).map(([value, label]) => (
                   <Button
                     key={value}
                     label={label}

@@ -38,7 +38,7 @@ const full = { x: 0, y: 0, width: 360, height: 640 };
 export function artwork(s: Settings, r: Resources, m: Motion): React.ReactElement {
   if (r.scene === 'embroidery')
     return (
-      <Group>
+      <Group clip={full}>
         <Rect {...full}>
           <ImageShader
             image={r.weave}
@@ -94,7 +94,7 @@ export function artwork(s: Settings, r: Resources, m: Motion): React.ReactElemen
       </Group>
     );
   return (
-    <Group>
+    <Group clip={full}>
       <Image image={r.clear} {...full} fit="fill" />
       <Mask
         mode="luminance"

@@ -40,6 +40,14 @@ export const PALETTES: Record<Palette, Spec> = {
     centres: ['#e3b23c', '#d9822f'],
     leaves: GREENS,
   },
+  dancheong: {
+    strokes: ['#236e63', '#347e70', '#285b52'],
+    accents: ['#b43c36', '#d5a63a', '#315e8b'],
+    accentShare: 0.55,
+    flowers: ['#b43c36', '#d5a63a', '#315e8b', '#eee5d3'],
+    centres: ['#d5a63a'],
+    leaves: ['#236e63', '#347e70'],
+  },
   red: {
     strokes: ['#9b2d2f', '#b03a37', '#8a2a2c'],
     accents: [],
@@ -58,11 +66,14 @@ export const PALETTES: Record<Palette, Spec> = {
   },
 };
 
-const pickFrom = <T>(rng: () => number, list: T[]) =>
-  list[Math.floor(rng() * list.length) % list.length];
+const pickFrom = <T>(rng: () => number, list: T[]) => {
+  'worklet';
+  return list[Math.floor(rng() * list.length) % list.length];
+};
 
 /** Orders strokes as a reader would sew them and orients each from its top/left end. */
 export function orderStrokes(strokes: Stroke[], writing: Writing, fontSize: number): Stroke[] {
+  'worklet';
   const keyed = strokes.map((s) => {
     let pts = s.points;
     if (!s.closed && pts.length > 1) {
@@ -107,6 +118,7 @@ export function planEmbroidery(input: {
   seed: number;
   glyphs: number;
 }): EmbroideryPlan {
+  'worklet';
   const { fontSize: fs, fine } = input;
   const spec = PALETTES[input.palette];
   const rng = random(input.seed ^ 0x5eed);
@@ -352,6 +364,7 @@ export function planEmbroidery(input: {
 
 /** Lightens (amount > 0) or darkens a #rrggbb colour. */
 export function shade(hex: string, amount: number): string {
+  'worklet';
   const n = parseInt(hex.slice(1), 16);
   const ch = (v: number) => {
     const out = amount >= 0 ? v + (255 - v) * amount : v * (1 + amount);

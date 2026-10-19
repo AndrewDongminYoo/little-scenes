@@ -42,6 +42,11 @@ appId: kr.donminzzi.littlescenes
     clearState: false
 - tapOn:
     id: scene-rain
+- extendedWaitUntil:
+    visible:
+      id: share
+      enabled: true
+    timeout: 60000
 - tapOn: 일시정지
 - tapOn:
     id: immersive

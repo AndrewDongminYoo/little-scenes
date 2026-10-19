@@ -19,16 +19,30 @@ export type TextLayout = {
   cells: { x: number; y: number }[];
 };
 
-const segment = (text: string) =>
-  typeof Intl.Segmenter === 'function'
+const segment = (text: string) => {
+  'worklet';
+  return typeof Intl.Segmenter === 'function'
     ? [...new Intl.Segmenter('ko', { granularity: 'grapheme' }).segment(text)].map((s) => s.segment)
     : [...text];
+};
+
+/** Keep trailing punctuation with its preceding grapheme in vertical layout. */
+export function verticalGlyphs(text: string): string[] {
+  'worklet';
+  const out: string[] = [];
+  for (const glyph of segment(text)) {
+    if (out.length && /[.,!?…:;、。]/u.test(glyph)) out[out.length - 1] += glyph;
+    else out.push(glyph);
+  }
+  return out;
+}
 
 export const VERTICAL_PITCH = 1.02;
 export const COLUMN_PITCH = 1.3;
 
 /** Fills columns word by word; only a word longer than a column is split. */
 export function wrapColumns(words: string[][], rows: number): string[][] {
+  'worklet';
   const columns: string[][] = [];
   let col: string[] = [];
   for (const word of words) {
@@ -50,8 +64,8 @@ export function wrapColumns(words: string[][], rows: number): string[][] {
   return columns;
 }
 
-const UPPER_RIGHT = new Set([',', '.', '、', '。']);
-const ROTATED = new Set(['(', ')', '-', '~', '…', '“', '”', '‘', '’', '"', "'"]);
+const UPPER_RIGHT = [',', '.', '、', '。'];
+const ROTATED = ['(', ')', '-', '~', '…', '“', '”', '‘', '’', '"', "'"];
 
 export function layoutText(
   api: SkiaApi,
@@ -61,6 +75,7 @@ export function layoutText(
   weight: number,
   maxSize = 72,
 ): TextLayout {
+  'worklet';
   const families = ['Handwritten', 'LittleScenes'];
   const paragraph = (value: string, fontSize: number, width: number) => {
     const builder = api.ParagraphBuilder.Make({ textAlign: 2 }, fonts);
@@ -115,7 +130,7 @@ export function layoutText(
       p.dispose();
     }
   } else {
-    const words = lines.map((line) => line.split(' ').filter(Boolean).map(segment));
+    const words = lines.map((line) => line.split(' ').filter(Boolean).map(verticalGlyphs));
     for (let size = maxSize; size >= 20; size -= 2) {
       const pitch = size * VERTICAL_PITCH,
         colPitch = size * COLUMN_PITCH;
@@ -132,18 +147,22 @@ export function layoutText(
           cells.push({ x: cx, y: cy });
           if (g === ' ') return;
           // Centred alignment inside a 3em box, so painting at -1.5em centres the glyph.
-          const p = paragraph(g, size, size * 3);
-          const gh = p.getHeight();
-          canvas.save();
-          if (UPPER_RIGHT.has(g)) {
-            canvas.translate(cx + size * 0.3, cy - size * 0.3);
-          } else {
-            canvas.translate(cx, cy);
-            if (ROTATED.has(g)) canvas.rotate(90, 0, 0);
+          const cluster = segment(g);
+          for (let index = 0; index < cluster.length; index++) {
+            const char = cluster[index];
+            const p = paragraph(char, size, size * 3);
+            const gh = p.getHeight();
+            canvas.save();
+            if (UPPER_RIGHT.includes(char) || index > 0) {
+              canvas.translate(cx + size * (0.3 + Math.max(0, index - 1) * 0.22), cy - size * 0.3);
+            } else {
+              canvas.translate(cx, cy);
+              if (ROTATED.includes(char)) canvas.rotate(90, 0, 0);
+            }
+            p.paint(canvas, -size * 1.5, -gh / 2);
+            canvas.restore();
+            p.dispose();
           }
-          p.paint(canvas, -size * 1.5, -gh / 2);
-          canvas.restore();
-          p.dispose();
         });
       });
       break;

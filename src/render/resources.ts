@@ -61,6 +61,7 @@ const W = 360,
 
 /** Small LRU: settings changes reuse whatever did not change (layout, backdrop, glass). */
 function lru<T>(size: number) {
+  'worklet';
   const map = new Map<string, T>();
   return (key: string, make: () => T): T => {
     const hit = map.get(key);
@@ -75,24 +76,40 @@ function lru<T>(size: number) {
     return value;
   };
 }
-const strokesCache = lru<{ strokes: Stroke[]; inkWidth: number; fontSize: number; glyphs: number }>(
-  6,
-);
-const backdropCache = lru<SkImage>(2);
-const glassCache = lru<SkImage>(2);
-const clothCache = lru<{ weave: SkImage; mottle: SkImage }>(2);
-const resourceCache = lru<Resources>(4);
 type Effects = { linen: SkRuntimeEffect; mottle: SkRuntimeEffect; fog: SkRuntimeEffect };
-let shared: ({ api: SkiaApi; sheet: Sheet } & Effects) | undefined;
+function makeCaches() {
+  'worklet';
+  return {
+    strokesCache: lru<{ strokes: Stroke[]; inkWidth: number; fontSize: number; glyphs: number }>(6),
+    backdropCache: lru<SkImage>(2),
+    glassCache: lru<SkImage>(2),
+    clothCache: lru<{ weave: SkImage; mottle: SkImage }>(2),
+    resourceCache: lru<Resources>(4),
+    shared: undefined as ({ api: SkiaApi; sheet: Sheet } & Effects) | undefined,
+  };
+}
+/** Each JS runtime owns its caches; never serialize mutable caches across runtimes. */
+function getCaches() {
+  'worklet';
+  const runtime = globalThis as typeof globalThis & {
+    __littleScenesRenderCacheV2?: ReturnType<typeof makeCaches>;
+  };
+  return (
+    runtime.__littleScenesRenderCacheV2 ?? (runtime.__littleScenesRenderCacheV2 = makeCaches())
+  );
+}
 
 function common(api: SkiaApi) {
+  'worklet';
+  const state = getCaches();
+  const shared = state.shared;
   if (shared?.api === api) return shared;
   const linen = api.RuntimeEffect.Make(LINEN),
     mottle = api.RuntimeEffect.Make(MOTTLE),
     fog = api.RuntimeEffect.Make(FOG);
   if (!linen || !mottle || !fog) throw new Error('재질 셰이더를 준비하지 못했어요.');
-  shared = { api, sheet: buildSheet(api), linen, mottle, fog };
-  return shared;
+  state.shared = { api, sheet: buildSheet(api), linen, mottle, fog };
+  return state.shared;
 }
 
 /** Shader output baked into an image: `scale` pixels per logical unit over a logical area. */
@@ -104,6 +121,7 @@ function bake(
   height: number,
   scale: number,
 ) {
+  'worklet';
   const surface = api.Surface.Make(Math.round(width * scale), Math.round(height * scale));
   if (!surface) throw new Error('이미지를 만들 공간이 부족해요.');
   const canvas = surface.getCanvas();
@@ -118,20 +136,25 @@ function bake(
   return image;
 }
 
-export const resourceKey = (s: Settings) =>
-  s.scene === 'embroidery'
+export const resourceKey = (s: Settings) => {
+  'worklet';
+  return s.scene === 'embroidery'
     ? JSON.stringify([s.scene, s.text, s.seed, s.thread, s.density, s.writing])
     : JSON.stringify([s.scene, s.text, s.seed, s.mood, s.intensity]);
+};
 
 export function prepareResources(
   api: SkiaApi,
   fonts: SkTypefaceFontProvider,
   settings: Settings,
 ): Resources {
-  return resourceCache(resourceKey(settings), () => build(api, fonts, settings));
+  'worklet';
+  return getCaches().resourceCache(resourceKey(settings), () => build(api, fonts, settings));
 }
 
 function build(api: SkiaApi, fonts: SkTypefaceFontProvider, s: Settings): Resources {
+  'worklet';
+  const { strokesCache, backdropCache, glassCache, clothCache } = getCaches();
   const { sheet, linen, mottle, fog } = common(api);
   const writing = s.scene === 'embroidery' ? s.writing : 'horizontal';
   const weight = s.scene === 'embroidery' ? 400 : 700;
@@ -214,6 +237,7 @@ function build(api: SkiaApi, fonts: SkTypefaceFontProvider, s: Settings): Resour
 }
 
 function polylines(api: SkiaApi, lines: Point[][]): SkPath {
+  'worklet';
   const b = api.PathBuilder.Make();
   for (const line of lines) {
     if (!line.length) continue;
@@ -233,6 +257,7 @@ function drawLayer(
     canvas: ReturnType<NonNullable<ReturnType<SkiaApi['Surface']['Make']>>['getCanvas']>,
   ) => void,
 ): SkImage {
+  'worklet';
   const surface = api.Surface.Make(Math.round(W * scale), Math.round(H * scale));
   if (!surface) throw new Error('이미지를 만들 공간이 부족해요.');
   const canvas = surface.getCanvas();
@@ -250,6 +275,7 @@ function drawLayer(
 const BACKDROP_SCALE = 1.5;
 /** Out-of-focus street at night (or an overcast day) behind the glass. */
 function backdrop(api: SkiaApi, mood: 'day' | 'night', seed: number): SkImage {
+  'worklet';
   const rng = random(seed ^ 0xbac0);
   const night = mood === 'night';
   const c = (v: string) => api.Color(v);
@@ -337,6 +363,7 @@ function glassLayer(
   seed: number,
   drops: Drop[],
 ): SkImage {
+  'worklet';
   // Blur and haze are low-frequency: build them at a small size, then upsample with a smooth cubic.
   const sw = 120,
     sh = 214;
@@ -380,6 +407,7 @@ function glassLayer(
 
 /** Each droplet is a small inverted lens of the scene behind it, with a dark rim and a highlight. */
 function dropPainter(api: SkiaApi, clear: SkImage) {
+  'worklet';
   const shadow = api.Paint();
   shadow.setAntiAlias(true);
   shadow.setColor(api.Color('#04090d'));

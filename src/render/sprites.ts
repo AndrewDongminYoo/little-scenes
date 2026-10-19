@@ -35,6 +35,7 @@ export type Sheet = { image: SkImage; rect: (kind: SheetKind, row: keyof typeof 
  * one 64px cell per sprite, every shape centred on (32, 32) along +x.
  */
 export function buildSheet(api: SkiaApi): Sheet {
+  'worklet';
   const surface = api.Surface.Make(CELL * KINDS.length, CELL * 3);
   if (!surface) throw new Error('실 재질을 준비하지 못했어요.');
   const canvas = surface.getCanvas();

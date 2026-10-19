@@ -114,6 +114,33 @@ async function main() {
       assert.ok(r.xforms.length > 50, 'Letters must be made of stitches');
       console.log(`${v.name}: ${r.xforms.length} stitches`);
     }
+    if (v.name === 'rain' && r.scene === 'rain') {
+      for (const time of [0, 1600, 5200, 9000]) {
+        const f = { ...frame, time };
+        const padded = makeOffscreenSurface(360, 800);
+        const proof = await drawOffscreen(
+          padded,
+          <Group transform={[{ translateY: 80 }]}>
+            {artwork(v.settings, r, frameMotion(Skia, f, r.running))}
+          </Group>,
+        );
+        const rgba = proof.readPixels() as Uint8Array;
+        for (let y = 0; y < 800; y++)
+          if (y < 80 || y >= 720)
+            for (let x = 0; x < 360; x++)
+              assert.equal(rgba[(y * 360 + x) * 4 + 3], 0, `Rain escaped letterbox at ${time}ms`);
+        proof.dispose();
+        padded.dispose();
+      }
+    }
+    if (v.name === 'rain' || v.name === 'embroidery') {
+      fs.mkdirSync('assets/previews', { recursive: true });
+      const previewSurface = makeOffscreenSurface(360, 640);
+      const preview = await drawOffscreen(previewSurface, artwork(v.settings, r, motion));
+      fs.writeFileSync(`assets/previews/${v.name}.png`, preview.encodeToBytes()!);
+      preview.dispose();
+      previewSurface.dispose();
+    }
     fs.writeFileSync(`${out}/${v.name}.png`, bytes!);
     image.dispose();
     surface.dispose();

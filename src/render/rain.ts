@@ -12,6 +12,7 @@ export const RUNNING_MAX = 12;
 
 /** Static condensation on the glass, from many fine beads to a few large lenses. */
 export function condensation(seed: number, intensity: 1 | 2 | 3): Drop[] {
+  'worklet';
   const rng = random(seed ^ 0xd209);
   const fine = [900, 1300, 1800][intensity - 1];
   const medium = [160, 260, 380][intensity - 1];
@@ -47,6 +48,7 @@ export function wipeEdges(
   width: number,
   seed: number,
 ): { beads: Drop[]; drips: Drip[] } {
+  'worklet';
   const rng = random(seed ^ 0xb3ad);
   const beads: Drop[] = [];
   const drips: Drip[] = [];
@@ -92,6 +94,7 @@ export function wipeEdges(
 
 /** Flat [x, phase, speed, trail, radius, wobble] per running drop. */
 export function runningDrops(seed: number, intensity: 1 | 2 | 3): number[] {
+  'worklet';
   const rng = random(seed ^ 0x7a1f);
   const out: number[] = [];
   for (let i = 0; i < intensity * 4; i++)

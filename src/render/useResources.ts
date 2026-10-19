@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
-import { Skia, useFonts } from '@shopify/react-native-skia';
+import { useFonts } from '@shopify/react-native-skia';
 import type { Settings } from '../domain/model';
-import { prepareResources, resourceKey, type Resources } from './resources';
+import { resourceKey, type Resources } from './resources';
+import { prepareInBackground } from './background';
 import { createGeneration } from '../domain/transactions';
 export function useResources(settings: Settings) {
   const generation = useRef(createGeneration());
@@ -23,10 +24,10 @@ export function useResources(settings: Settings) {
     let active = true;
     const token = generation.current.next();
     let resource: Resources | undefined;
-    Promise.resolve().then(() => {
+    Promise.resolve().then(async () => {
       if (!active) return;
       try {
-        resource = prepareResources(Skia, fonts, settings);
+        resource = await prepareInBackground(fonts, settings);
         if (active && generation.current.current(token)) setResult({ key, resources: resource });
       } catch (e) {
         if (active && generation.current.current(token))
