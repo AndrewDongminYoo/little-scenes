@@ -1,5 +1,5 @@
 export type SceneId = 'embroidery' | 'rain';
-export type Palette = 'meadow' | 'red' | 'navy';
+export type Palette = 'meadow' | 'dancheong' | 'red' | 'navy';
 export type Writing = 'vertical' | 'horizontal';
 export type Settings = {
   scene: SceneId;
@@ -17,6 +17,8 @@ export type Rect = Point & { width: number; height: number };
 export type Trail = number[];
 export type Frame = Settings & {
   time: number;
+  /** Independent clock for finger-trail restoration, frozen together with exports. */
+  interactionTime?: number;
   reveal: number;
   touch: Point & { strength: number };
   trail: Trail;
@@ -69,6 +71,7 @@ export function defaults(scene: SceneId): Settings {
   };
 }
 export function random(seed: number): () => number {
+  'worklet';
   // Scramble the seed (murmur3 finaliser) so neighbouring seeds do not start in lockstep.
   let x = seed >>> 0;
   x = Math.imul(x ^ (x >>> 16), 0x85ebca6b) >>> 0;
@@ -86,8 +89,9 @@ export function freezeFrame(frame: Frame): Readonly<Frame> {
     trail: Object.freeze([...frame.trail]) as Trail,
   });
 }
-const pick = <T>(value: unknown, allowed: readonly T[], fallback: T): T =>
-  allowed.includes(value as T) ? (value as T) : fallback;
+const pick = <T>(value: unknown, allowed: readonly T[], fallback: T): T => {
+  return allowed.includes(value as T) ? (value as T) : fallback;
+};
 /** Invalid fields fall back one by one so an old or partial record keeps the user's phrase. */
 export function decodeSettings(id: SceneId, json: string | null): Settings {
   const base = defaults(id);
@@ -106,7 +110,7 @@ export function decodeSettings(id: SceneId, json: string | null): Settings {
       typeof seed === 'number' && Number.isInteger(seed) && seed >= 0 && seed <= 4294967295
         ? seed
         : base.seed,
-    thread: pick(s.thread, ['meadow', 'red', 'navy'] as const, base.thread),
+    thread: pick(s.thread, ['meadow', 'dancheong', 'red', 'navy'] as const, base.thread),
     density: pick(s.density, ['fine', 'normal'] as const, base.density),
     writing: pick(s.writing, ['vertical', 'horizontal'] as const, base.writing),
     mood: pick(s.mood, ['day', 'night'] as const, base.mood),
@@ -138,6 +142,7 @@ export function nextClock(time: number, delta: number, active: boolean, scene: S
   return active ? (scene === 'embroidery' ? Math.min(1600, time + delta) : time + delta) : time;
 }
 export function fitRect(width: number, height: number): Rect {
+  'worklet';
   const scale = Math.max(0, Math.min(width / 360, height / 640));
   return {
     x: (width - 360 * scale) / 2,
@@ -160,5 +165,20 @@ export function toLogicalPoint(p: Point, r: Rect): Point | null {
   return {
     x: ((p.x - r.x) * 360) / r.width,
     y: ((p.y - r.y) * 640) / r.height,
+  };
+}
+
+export function advanceClocks(
+  time: number,
+  interactionTime: number,
+  delta: number,
+  playing: boolean,
+  touching: boolean,
+  scene: SceneId,
+) {
+  'worklet';
+  return {
+    time: nextClock(time, delta, playing, scene),
+    interactionTime: touching ? interactionTime + delta : interactionTime,
   };
 }

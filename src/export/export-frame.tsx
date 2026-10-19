@@ -3,15 +3,13 @@ import { Skia, Group, drawAsPicture } from '@shopify/react-native-skia';
 import { File, Directory, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import type { Frame } from '../domain/model';
+import { encodeInBackground } from '../render/background';
 import type { Resources } from '../render/resources';
 import { artwork } from '../scenes/artwork';
 import { frameMotion } from '../render/motion';
 const directory = () => new Directory(Paths.cache, 'little-scenes');
 export async function renderPng(frame: Readonly<Frame>, resources: Resources): Promise<Uint8Array> {
-  const surface = Skia.Surface.Make(1080, 1920);
-  if (!surface) throw new Error('이미지를 만들 공간이 부족해요.');
   let picture;
-  let image;
   try {
     picture = await drawAsPicture(
       <Group transform={[{ scale: 3 }]}>
@@ -22,16 +20,9 @@ export async function renderPng(frame: Readonly<Frame>, resources: Resources): P
         )}
       </Group>,
     );
-    surface.getCanvas().drawPicture(picture);
-    surface.flush();
-    image = surface.makeImageSnapshot();
-    const bytes = image.encodeToBytes();
-    if (!bytes) throw new Error('PNG 변환에 실패했어요.');
-    return bytes;
+    return await encodeInBackground(picture);
   } finally {
-    image?.dispose();
     picture?.dispose();
-    surface.dispose();
   }
 }
 export async function cleanOldExports() {

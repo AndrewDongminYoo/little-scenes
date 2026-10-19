@@ -42,7 +42,21 @@ appId: kr.donminzzi.littlescenes
     clearState: false
 - tapOn:
     id: scene-rain
+- extendedWaitUntil:
+    visible:
+      id: share
+      enabled: true
+    timeout: 60000
+# Reduced Motion/CI animation settings can start this scene paused.
+# Normalize to playing, then verify the actual pause transition on both platforms.
+- runFlow:
+    when:
+      visible: 재생
+    commands:
+      - tapOn: 재생
+- assertVisible: 일시정지
 - tapOn: 일시정지
+- assertVisible: 재생
 - tapOn:
     id: immersive
 - takeScreenshot: evidence/rain

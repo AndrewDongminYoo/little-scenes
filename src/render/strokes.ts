@@ -2,11 +2,45 @@ import type { Point } from '../domain/model.ts';
 
 export type Stroke = { points: Point[]; closed: boolean };
 
+const neighbours = (i: number, w: number) => {
+  'worklet';
+  return [i - w - 1, i - w, i - w + 1, i + 1, i + w + 1, i + w, i + w - 1, i - 1];
+};
+
+const adjacent = (a: number, b: number, w: number) => {
+  'worklet';
+  const dx = Math.abs((a % w) - (b % w)),
+    dy = Math.abs(Math.floor(a / w) - Math.floor(b / w));
+  return dx <= 1 && dy <= 1 && a !== b;
+};
+
+function components(set: number[], w: number) {
+  'worklet';
+  const seen = new Set<number>();
+  let count = 0;
+  for (const s of set) {
+    if (seen.has(s)) continue;
+    count++;
+    const stack = [s];
+    seen.add(s);
+    while (stack.length) {
+      const c = stack.pop()!;
+      for (const o of set)
+        if (!seen.has(o) && adjacent(c, o, w)) {
+          seen.add(o);
+          stack.push(o);
+        }
+    }
+  }
+  return count;
+}
+
 /**
  * Zhang–Suen thinning over the foreground list only, followed by one pass that
  * removes staircase corners. `bin` must have a zero one-pixel border.
  */
 export function thin(bin: Uint8Array, w: number, h: number): Uint8Array {
+  'worklet';
   const img = bin.slice();
   let fg: number[] = [];
   for (let y = 1; y < h - 1; y++)
@@ -54,43 +88,9 @@ export function thin(bin: Uint8Array, w: number, h: number): Uint8Array {
   return img;
 }
 
-const neighbours = (i: number, w: number) => [
-  i - w - 1,
-  i - w,
-  i - w + 1,
-  i + 1,
-  i + w + 1,
-  i + w,
-  i + w - 1,
-  i - 1,
-];
-const adjacent = (a: number, b: number, w: number) => {
-  const dx = Math.abs((a % w) - (b % w)),
-    dy = Math.abs(Math.floor(a / w) - Math.floor(b / w));
-  return dx <= 1 && dy <= 1 && a !== b;
-};
-function components(set: number[], w: number) {
-  const seen = new Set<number>();
-  let count = 0;
-  for (const s of set) {
-    if (seen.has(s)) continue;
-    count++;
-    const stack = [s];
-    seen.add(s);
-    while (stack.length) {
-      const c = stack.pop()!;
-      for (const o of set)
-        if (!seen.has(o) && adjacent(c, o, w)) {
-          seen.add(o);
-          stack.push(o);
-        }
-    }
-  }
-  return count;
-}
-
 /** Traces a one-pixel skeleton into open segments (node to node) and closed loops. */
 export function trace(sk: Uint8Array, w: number, h: number): Stroke[] {
+  'worklet';
   const degree = new Uint8Array(sk.length);
   const pixels: number[] = [];
   for (let y = 1; y < h - 1; y++)
@@ -183,6 +183,7 @@ export function trace(sk: Uint8Array, w: number, h: number): Stroke[] {
 }
 
 export function smooth(points: Point[], closed: boolean, radius = 2): Point[] {
+  'worklet';
   if (points.length < 3) return points;
   let cur = points;
   for (let pass = 0; pass < 2; pass++) {
@@ -205,6 +206,7 @@ export function smooth(points: Point[], closed: boolean, radius = 2): Point[] {
 }
 
 export function length(points: Point[], closed = false): number {
+  'worklet';
   let total = 0;
   for (let i = 1; i < points.length; i++)
     total += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
@@ -222,6 +224,7 @@ export function resample(
   step: number,
   closed = false,
 ): { x: number; y: number; angle: number }[] {
+  'worklet';
   const pts = closed && points.length > 2 ? [...points, points[0]] : points;
   if (pts.length === 1) return [{ ...pts[0], angle: 0 }];
   const total = length(pts);
@@ -260,6 +263,7 @@ export function extractStrokes(
   h: number,
   scale: number,
 ): { strokes: Stroke[]; inkWidth: number } {
+  'worklet';
   const bin = new Uint8Array(w * h);
   let area = 0;
   for (let y = 1; y < h - 1; y++)

@@ -58,9 +58,13 @@ export type Resources = EmbroideryResources | RainResources;
 const OUT = 3;
 const W = 360,
   H = 640;
+type Effects = { linen: SkRuntimeEffect; mottle: SkRuntimeEffect; fog: SkRuntimeEffect };
+
+const BACKDROP_SCALE = 1.5;
 
 /** Small LRU: settings changes reuse whatever did not change (layout, backdrop, glass). */
 function lru<T>(size: number) {
+  'worklet';
   const map = new Map<string, T>();
   return (key: string, make: () => T): T => {
     const hit = map.get(key);
@@ -75,24 +79,52 @@ function lru<T>(size: number) {
     return value;
   };
 }
-const strokesCache = lru<{ strokes: Stroke[]; inkWidth: number; fontSize: number; glyphs: number }>(
-  6,
-);
-const backdropCache = lru<SkImage>(2);
-const glassCache = lru<SkImage>(2);
-const clothCache = lru<{ weave: SkImage; mottle: SkImage }>(2);
-const resourceCache = lru<Resources>(4);
-type Effects = { linen: SkRuntimeEffect; mottle: SkRuntimeEffect; fog: SkRuntimeEffect };
-let shared: ({ api: SkiaApi; sheet: Sheet } & Effects) | undefined;
+
+function makeCaches() {
+  'worklet';
+  return {
+    strokesCache: lru<{ strokes: Stroke[]; inkWidth: number; fontSize: number; glyphs: number }>(6),
+    backdropCache: lru<SkImage>(2),
+    glassCache: lru<SkImage>(2),
+    clothCache: lru<{ weave: SkImage; mottle: SkImage }>(2),
+    resourceCache: lru<Resources>(4),
+    shared: undefined as ({ api: SkiaApi; sheet: Sheet } & Effects) | undefined,
+  };
+}
+
+/** Each JS runtime owns its caches; never serialize mutable caches across runtimes. */
+function getCaches() {
+  'worklet';
+  const runtime = globalThis as typeof globalThis & {
+    __littleScenesRenderCacheV2?: ReturnType<typeof makeCaches>;
+  };
+  return (
+    runtime.__littleScenesRenderCacheV2 ?? (runtime.__littleScenesRenderCacheV2 = makeCaches())
+  );
+}
+
+function stage<T>(name: string, operation: () => T): T {
+  'worklet';
+  try {
+    return operation();
+  } catch (error) {
+    const detail =
+      error instanceof Error ? `${error.message}\n${error.stack ?? ''}` : String(error);
+    throw new Error(`[${name}] ${detail}`);
+  }
+}
 
 function common(api: SkiaApi) {
+  'worklet';
+  const state = getCaches();
+  const shared = state.shared;
   if (shared?.api === api) return shared;
   const linen = api.RuntimeEffect.Make(LINEN),
     mottle = api.RuntimeEffect.Make(MOTTLE),
     fog = api.RuntimeEffect.Make(FOG);
   if (!linen || !mottle || !fog) throw new Error('재질 셰이더를 준비하지 못했어요.');
-  shared = { api, sheet: buildSheet(api), linen, mottle, fog };
-  return shared;
+  state.shared = { api, sheet: stage('sprite-sheet', () => buildSheet(api)), linen, mottle, fog };
+  return state.shared;
 }
 
 /** Shader output baked into an image: `scale` pixels per logical unit over a logical area. */
@@ -104,6 +136,7 @@ function bake(
   height: number,
   scale: number,
 ) {
+  'worklet';
   const surface = api.Surface.Make(Math.round(width * scale), Math.round(height * scale));
   if (!surface) throw new Error('이미지를 만들 공간이 부족해요.');
   const canvas = surface.getCanvas();
@@ -118,102 +151,15 @@ function bake(
   return image;
 }
 
-export const resourceKey = (s: Settings) =>
-  s.scene === 'embroidery'
+export const resourceKey = (s: Settings) => {
+  'worklet';
+  return s.scene === 'embroidery'
     ? JSON.stringify([s.scene, s.text, s.seed, s.thread, s.density, s.writing])
     : JSON.stringify([s.scene, s.text, s.seed, s.mood, s.intensity]);
-
-export function prepareResources(
-  api: SkiaApi,
-  fonts: SkTypefaceFontProvider,
-  settings: Settings,
-): Resources {
-  return resourceCache(resourceKey(settings), () => build(api, fonts, settings));
-}
-
-function build(api: SkiaApi, fonts: SkTypefaceFontProvider, s: Settings): Resources {
-  const { sheet, linen, mottle, fog } = common(api);
-  const writing = s.scene === 'embroidery' ? s.writing : 'horizontal';
-  const weight = s.scene === 'embroidery' ? 400 : 700;
-  const maxSize = s.scene === 'rain' ? 96 : 84;
-  const text = strokesCache(JSON.stringify([s.text, writing, weight, maxSize]), () => {
-    const layout = layoutText(api, fonts, s.text, writing, weight, maxSize);
-    const { strokes, inkWidth } = extractStrokes(
-      layout.alpha,
-      layout.width,
-      layout.height,
-      layout.scale,
-    );
-    const glyphs = [...s.text.replace(/\s/g, '')].length;
-    return { strokes, inkWidth, fontSize: layout.fontSize, glyphs };
-  });
-  if (s.scene === 'embroidery') {
-    const plan = planEmbroidery({
-      strokes: text.strokes,
-      fontSize: text.fontSize,
-      writing,
-      palette: s.thread,
-      fine: s.density === 'fine',
-      seed: s.seed,
-      glyphs: text.glyphs,
-    });
-    const cloth = clothCache(String(s.seed), () => ({
-      weave: bake(api, linen, [s.seed % 997], LINEN_TILE, LINEN_TILE, OUT),
-      mottle: bake(api, mottle, [s.seed % 997], W, H, 0.25),
-    }));
-    const xforms = plan.items.map((p) => placeSprite(api, p.kind, p.x, p.y, p.angle, p.size));
-    return {
-      scene: 'embroidery',
-      sheet: sheet.image,
-      body: plan.items.map((p) => sheet.rect(p.kind, 'body')),
-      shadow: plan.items.map((p) => sheet.rect(p.kind, 'shadow')),
-      gloss: plan.items.map((p) => sheet.rect(p.kind, 'gloss')),
-      xforms,
-      colors: plan.items.map((p) => api.Color(p.color)),
-      revealPath: polylines(api, plan.reveal),
-      revealWidth: plan.revealWidth,
-      ...cloth,
-      fontSize: text.fontSize,
-    };
-  }
-  const clear = backdropCache(`${s.mood}:${s.seed}`, () => backdrop(api, s.mood, s.seed));
-  const glass = glassCache(`${s.mood}:${s.seed}:${s.intensity}`, () =>
-    glassLayer(api, fog, clear, s.mood, s.seed, condensation(s.seed, s.intensity)),
-  );
-  const wipeWidth = Math.min(11, Math.max(3.5, text.fontSize * 0.13));
-  const edges = wipeEdges(text.strokes, wipeWidth, s.seed);
-  const rim = drawLayer(api, OUT, (canvas) => {
-    const draw = dropPainter(api, clear);
-    for (const b of edges.beads) draw(canvas, b);
-    for (const d of edges.drips) draw(canvas, d.bead);
-  });
-  const running = runningDrops(s.seed, s.intensity);
-  const count = RUNNING_MAX;
-  return {
-    scene: 'rain',
-    sheet: sheet.image,
-    clear,
-    glass,
-    rim,
-    wipePath: polylines(
-      api,
-      text.strokes.map((t) => (t.closed ? [...t.points, t.points[0]] : t.points)),
-    ),
-    wipeWidth,
-    dripPath: polylines(
-      api,
-      edges.drips.map((d) => d.points),
-    ),
-    running,
-    dropBody: Array.from({ length: count }, () => sheet.rect('drop', 'body')),
-    dropShadow: Array.from({ length: count }, () => sheet.rect('drop', 'shadow')),
-    dropGloss: Array.from({ length: count }, () => sheet.rect('drop', 'gloss')),
-    soft: Array.from({ length: TRAIL_POINTS }, () => sheet.rect('soft', 'body')),
-    fontSize: text.fontSize,
-  };
-}
+};
 
 function polylines(api: SkiaApi, lines: Point[][]): SkPath {
+  'worklet';
   const b = api.PathBuilder.Make();
   for (const line of lines) {
     if (!line.length) continue;
@@ -233,6 +179,7 @@ function drawLayer(
     canvas: ReturnType<NonNullable<ReturnType<SkiaApi['Surface']['Make']>>['getCanvas']>,
   ) => void,
 ): SkImage {
+  'worklet';
   const surface = api.Surface.Make(Math.round(W * scale), Math.round(H * scale));
   if (!surface) throw new Error('이미지를 만들 공간이 부족해요.');
   const canvas = surface.getCanvas();
@@ -247,9 +194,9 @@ function drawLayer(
   return image;
 }
 
-const BACKDROP_SCALE = 1.5;
 /** Out-of-focus street at night (or an overcast day) behind the glass. */
 function backdrop(api: SkiaApi, mood: 'day' | 'night', seed: number): SkImage {
+  'worklet';
   const rng = random(seed ^ 0xbac0);
   const night = mood === 'night';
   const c = (v: string) => api.Color(v);
@@ -328,58 +275,9 @@ function backdrop(api: SkiaApi, mood: 'day' | 'night', seed: number): SkImage {
   });
 }
 
-/** Fogged glass: heavily blurred backdrop + haze + lens droplets, at output resolution. */
-function glassLayer(
-  api: SkiaApi,
-  fog: SkRuntimeEffect,
-  clear: SkImage,
-  mood: 'day' | 'night',
-  seed: number,
-  drops: Drop[],
-): SkImage {
-  // Blur and haze are low-frequency: build them at a small size, then upsample with a smooth cubic.
-  const sw = 120,
-    sh = 214;
-  const small = api.Surface.Make(sw, sh);
-  if (!small) throw new Error('이미지를 만들 공간이 부족해요.');
-  const sc = small.getCanvas();
-  const p = api.Paint();
-  p.setImageFilter(api.ImageFilter.MakeBlur(3.4, 3.4, TileMode.Clamp, null));
-  sc.drawImageRectOptions(
-    clear,
-    api.XYWHRect(0, 0, clear.width(), clear.height()),
-    api.XYWHRect(0, 0, sw, sh),
-    FilterMode.Linear,
-    MipmapMode.Linear,
-    p,
-  );
-  const night = mood === 'night';
-  const haze = api.Paint();
-  const tint = night ? [0.62, 0.7, 0.72] : [0.9, 0.93, 0.93];
-  haze.setShader(fog.makeShader([seed % 997, night ? 0.34 : 0.62, ...tint]));
-  sc.save();
-  sc.scale(sw / W, sh / H);
-  sc.drawRect(api.XYWHRect(0, 0, W, H), haze);
-  sc.restore();
-  small.flush();
-  const fogged = small.makeImageSnapshot();
-  small.dispose();
-  return drawLayer(api, OUT, (canvas) => {
-    canvas.drawImageRectCubic(
-      fogged,
-      api.XYWHRect(0, 0, sw, sh),
-      api.XYWHRect(0, 0, W, H),
-      1 / 3,
-      1 / 3,
-      null,
-    );
-    const draw = dropPainter(api, clear);
-    for (const d of drops) draw(canvas, d);
-  });
-}
-
 /** Each droplet is a small inverted lens of the scene behind it, with a dark rim and a highlight. */
 function dropPainter(api: SkiaApi, clear: SkImage) {
+  'worklet';
   const shadow = api.Paint();
   shadow.setAntiAlias(true);
   shadow.setColor(api.Color('#04090d'));
@@ -448,4 +346,150 @@ function dropPainter(api: SkiaApi, clear: SkImage) {
     spark.setMaskFilter(api.MaskFilter.MakeBlur(BlurStyle.Normal, Math.max(0.1, d.r * 0.07), true));
     canvas.drawOval(api.XYWHRect(d.x - rx * 0.55, d.y - ry * 0.62, rx * 0.5, ry * 0.36), spark);
   };
+}
+
+/** Fogged glass: heavily blurred backdrop + haze + lens droplets, at output resolution. */
+function glassLayer(
+  api: SkiaApi,
+  fog: SkRuntimeEffect,
+  clear: SkImage,
+  mood: 'day' | 'night',
+  seed: number,
+  drops: Drop[],
+): SkImage {
+  'worklet';
+  // Blur and haze are low-frequency: build them at a small size, then upsample with a smooth cubic.
+  const sw = 120,
+    sh = 214;
+  const small = api.Surface.Make(sw, sh);
+  if (!small) throw new Error('이미지를 만들 공간이 부족해요.');
+  const sc = small.getCanvas();
+  const p = api.Paint();
+  p.setImageFilter(api.ImageFilter.MakeBlur(3.4, 3.4, TileMode.Clamp, null));
+  sc.drawImageRectOptions(
+    clear,
+    api.XYWHRect(0, 0, clear.width(), clear.height()),
+    api.XYWHRect(0, 0, sw, sh),
+    FilterMode.Linear,
+    MipmapMode.Linear,
+    p,
+  );
+  const night = mood === 'night';
+  const haze = api.Paint();
+  const tint = night ? [0.62, 0.7, 0.72] : [0.9, 0.93, 0.93];
+  haze.setShader(fog.makeShader([seed % 997, night ? 0.34 : 0.62, ...tint]));
+  sc.save();
+  sc.scale(sw / W, sh / H);
+  sc.drawRect(api.XYWHRect(0, 0, W, H), haze);
+  sc.restore();
+  small.flush();
+  const fogged = small.makeImageSnapshot();
+  small.dispose();
+  return drawLayer(api, OUT, (canvas) => {
+    canvas.drawImageRectCubic(
+      fogged,
+      api.XYWHRect(0, 0, sw, sh),
+      api.XYWHRect(0, 0, W, H),
+      1 / 3,
+      1 / 3,
+      null,
+    );
+    const draw = dropPainter(api, clear);
+    for (const d of drops) draw(canvas, d);
+  });
+}
+
+function build(api: SkiaApi, fonts: SkTypefaceFontProvider, s: Settings): Resources {
+  'worklet';
+  const { strokesCache, backdropCache, glassCache, clothCache } = getCaches();
+  const { sheet, linen, mottle, fog } = stage('materials', () => common(api));
+  const writing = s.scene === 'embroidery' ? s.writing : 'horizontal';
+  const weight = s.scene === 'embroidery' ? 400 : 700;
+  const maxSize = s.scene === 'rain' ? 96 : 84;
+  const text = strokesCache(JSON.stringify([s.text, writing, weight, maxSize]), () => {
+    const layout = stage('text-layout', () =>
+      layoutText(api, fonts, s.text, writing, weight, maxSize),
+    );
+    const { strokes, inkWidth } = extractStrokes(
+      layout.alpha,
+      layout.width,
+      layout.height,
+      layout.scale,
+    );
+    const glyphs = [...s.text.replace(/\s/g, '')].length;
+    return { strokes, inkWidth, fontSize: layout.fontSize, glyphs };
+  });
+  if (s.scene === 'embroidery') {
+    const plan = planEmbroidery({
+      strokes: text.strokes,
+      fontSize: text.fontSize,
+      writing,
+      palette: s.thread,
+      fine: s.density === 'fine',
+      seed: s.seed,
+      glyphs: text.glyphs,
+    });
+    const cloth = clothCache(String(s.seed), () => ({
+      weave: bake(api, linen, [s.seed % 997], LINEN_TILE, LINEN_TILE, OUT),
+      mottle: bake(api, mottle, [s.seed % 997], W, H, 0.25),
+    }));
+    const xforms = plan.items.map((p) => placeSprite(api, p.kind, p.x, p.y, p.angle, p.size));
+    return {
+      scene: 'embroidery',
+      sheet: sheet.image,
+      body: plan.items.map((p) => sheet.rect(p.kind, 'body')),
+      shadow: plan.items.map((p) => sheet.rect(p.kind, 'shadow')),
+      gloss: plan.items.map((p) => sheet.rect(p.kind, 'gloss')),
+      xforms,
+      colors: plan.items.map((p) => api.Color(p.color)),
+      revealPath: polylines(api, plan.reveal),
+      revealWidth: plan.revealWidth,
+      ...cloth,
+      fontSize: text.fontSize,
+    };
+  }
+  const clear = backdropCache(`${s.mood}:${s.seed}`, () => backdrop(api, s.mood, s.seed));
+  const glass = glassCache(`${s.mood}:${s.seed}:${s.intensity}`, () =>
+    glassLayer(api, fog, clear, s.mood, s.seed, condensation(s.seed, s.intensity)),
+  );
+  const wipeWidth = Math.min(11, Math.max(3.5, text.fontSize * 0.13));
+  const edges = wipeEdges(text.strokes, wipeWidth, s.seed);
+  const rim = drawLayer(api, OUT, (canvas) => {
+    const draw = dropPainter(api, clear);
+    for (const b of edges.beads) draw(canvas, b);
+    for (const d of edges.drips) draw(canvas, d.bead);
+  });
+  const running = runningDrops(s.seed, s.intensity);
+  const count = RUNNING_MAX;
+  return {
+    scene: 'rain',
+    sheet: sheet.image,
+    clear,
+    glass,
+    rim,
+    wipePath: polylines(
+      api,
+      text.strokes.map((t) => (t.closed ? [...t.points, t.points[0]] : t.points)),
+    ),
+    wipeWidth,
+    dripPath: polylines(
+      api,
+      edges.drips.map((d) => d.points),
+    ),
+    running,
+    dropBody: Array.from({ length: count }, () => sheet.rect('drop', 'body')),
+    dropShadow: Array.from({ length: count }, () => sheet.rect('drop', 'shadow')),
+    dropGloss: Array.from({ length: count }, () => sheet.rect('drop', 'gloss')),
+    soft: Array.from({ length: TRAIL_POINTS }, () => sheet.rect('soft', 'body')),
+    fontSize: text.fontSize,
+  };
+}
+
+export function prepareResources(
+  api: SkiaApi,
+  fonts: SkTypefaceFontProvider,
+  settings: Settings,
+): Resources {
+  'worklet';
+  return getCaches().resourceCache(resourceKey(settings), () => build(api, fonts, settings));
 }

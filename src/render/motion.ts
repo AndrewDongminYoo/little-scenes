@@ -106,6 +106,6 @@ export function frameMotion(api: SkiaApi, frame: Readonly<Frame>, running: numbe
     runningPath: runningTrails(api, running, frame.time),
     runningXforms: runningXforms(api, running, frame.time),
     trailXforms: trailXforms(api, frame.trail),
-    trailColors: trailColors(frame.trail, frame.time),
+    trailColors: trailColors(frame.trail, frame.interactionTime ?? frame.time),
   };
 }
