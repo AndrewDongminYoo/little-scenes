@@ -41,7 +41,8 @@
     "web": "expo start --web",
     "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src tests"
+    "lint": "eslint src tests",
+    "render:check": "node scripts/build-render-check.cjs && node scripts/render-check.cjs"
   },
   "private": true
 }
