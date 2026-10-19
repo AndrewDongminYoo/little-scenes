@@ -49,3 +49,9 @@ The actual non-minified iOS export reproduced the cause: OXC turns Worklet decla
 ## Floral spacing
 
 Flower envelopes now avoid other flower/leaf envelopes, neighbouring stroke segments and artwork margins. Replacing a closed loop can ignore that loop only, not nearby strokes. Tip decorations try alternate nearby directions and are omitted when no clear location exists. Leaves receive their own clearance check. A crowded Korean phrase is included in the extended render checks. Tests cover segment interiors, nearby strokes, margins, loop exemptions and multiple seeds. This keeps stitch rendering unchanged rather than replacing the material style.
+
+## Android runtime progress (6e54079)
+
+Run 39251928359 rendered both scenes and reached the embroidery native share sheet. The Android smoke flow then failed because it unconditionally tapped `일시정지`, but the screenshot showed `재생`. The emulator runner disables system animations; the app's Reduced Motion path starts paused. The flow now conditionally starts playback if already paused, requires `일시정지`, taps it, and requires `재생`. No readiness, rendering or export checks are removed. Reference: https://docs.maestro.dev/maestro-flows/flow-control-and-logic/conditions . Full two-scene PNG validation is still pending the corrected flow.
+
+The same run's iOS job built successfully but again stopped during XCUITest driver startup (no app flow or screenshots). Its logs show the default 120-second driver connection timeout. The iOS smoke step now allows at most 300 seconds for driver startup, retaining the 10-minute step cap and every test assertion. This is the documented CI startup-timeout configuration, not proof that the underlying driver issue is fixed: https://docs.maestro.dev/maestro-cli/run-your-first-test-with-the-maestro-cli .

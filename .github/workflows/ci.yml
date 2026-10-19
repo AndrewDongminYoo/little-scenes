@@ -110,6 +110,8 @@ jobs:
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
       - name: iOS smoke test
         timeout-minutes: 10
+        env:
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: 300000
         run: maestro test --format junit --output evidence/ios.xml .maestro/smoke.yaml
       - name: Collect iOS failure diagnostics
         if: failure()
