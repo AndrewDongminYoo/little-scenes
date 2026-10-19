@@ -1,0 +1,6 @@
+# A system-app probe: no Little Scenes binary or JS is involved.
+appId: com.apple.Preferences
+---
+- launchApp
+- assertVisible: Settings
+- takeScreenshot: evidence/ios-driver-settings
