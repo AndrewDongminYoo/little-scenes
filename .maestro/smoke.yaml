@@ -1,0 +1,58 @@
+appId: kr.donminzzi.littlescenes
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: scene-embroidery
+    timeout: 60000
+- takeScreenshot: evidence/gallery
+- tapOn:
+    id: scene-embroidery
+- extendedWaitUntil:
+    visible:
+      id: share
+      enabled: true
+    timeout: 30000
+- tapOn:
+    id: edit-phrase
+- tapOn:
+    id: phrase-input
+- eraseText: 100
+- inputText: Little Scenes
+- tapOn:
+    id: apply-phrase
+- tapOn:
+    id: immersive
+- takeScreenshot: evidence/embroidery
+- tapOn:
+    point: 50%,50%
+- assertVisible:
+    id: edit-phrase
+- extendedWaitUntil:
+    visible:
+      id: share
+      enabled: true
+    timeout: 60000
+- tapOn:
+    id: share
+- takeScreenshot: evidence/embroidery-share-sheet
+- stopApp
+- launchApp:
+    clearState: false
+- tapOn:
+    id: scene-rain
+- tapOn: 일시정지
+- tapOn:
+    id: immersive
+- takeScreenshot: evidence/rain
+- tapOn:
+    point: 50%,50%
+- extendedWaitUntil:
+    visible:
+      id: share
+      enabled: true
+    timeout: 60000
+- tapOn:
+    id: share
+- takeScreenshot: evidence/rain-share-sheet
