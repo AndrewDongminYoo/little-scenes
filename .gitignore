@@ -36,8 +36,10 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-example
+evidence/
 
 # generated native folders
 /ios
 /android
+
+scripts/render-check.cjs

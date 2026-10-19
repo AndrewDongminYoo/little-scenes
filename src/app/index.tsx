@@ -1,98 +1,59 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, Text, ScrollView, Pressable, useWindowDimensions, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { scenes } from '../scenes/registry';
+import { Preview } from '../ui/Preview';
+export default function Gallery() {
+  const { width } = useWindowDimensions();
+  const cardWidth = Math.min(210, (width - 60) / 2);
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+    <SafeAreaView style={styles.page}>
+      <StatusBar style="dark" />
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.eyebrow}>A SMALL MOMENT, MADE YOURS</Text>
+        <Text style={styles.title}>Little Scenes</Text>
+        <Text style={styles.subtitle}>한 문장을, 작은 작품으로.</Text>
+        <View style={styles.cards}>
+          {scenes.map((s) => (
+            <Pressable
+              key={s.id}
+              testID={`scene-${s.id}`}
+              accessibilityRole="button"
+              accessibilityLabel={`${s.name}, ${s.kind}. 작품 만들기`}
+              onPress={() => router.push(`/scene/${s.id}`)}
+              style={{ width: cardWidth }}
+            >
+              <Preview id={s.id} width={cardWidth} />
+              <Text style={styles.kind}>{s.kind}</Text>
+              <Text style={styles.name}>{s.name}</Text>
+              <Text style={styles.description}>{s.description}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <Text style={styles.footer}>
+          문구를 바꾸고, 마음에 드는 순간을 공유해요.{'\n'}모든 작품은 오프라인에서도 만들 수
+          있어요.
+        </Text>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
-
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
+  page: { flex: 1, backgroundColor: '#f7f3eb' },
+  content: { padding: 24, paddingTop: 36 },
+  eyebrow: { fontSize: 10, letterSpacing: 2, color: '#687269' },
+  title: { fontSize: 36, fontWeight: '600', color: '#263a30', marginTop: 12 },
+  subtitle: { fontSize: 17, color: '#687269', marginTop: 8 },
+  cards: {
     flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
+    gap: 12,
+    marginTop: 36,
     justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
   },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
+  kind: { fontSize: 10, color: '#6c756a', marginTop: 12 },
+  name: { fontSize: 18, fontWeight: '600', color: '#263a30', marginTop: 6 },
+  description: { fontSize: 13, lineHeight: 21, color: '#687269', marginTop: 7 },
+  footer: { fontSize: 13, lineHeight: 23, color: '#737b70', marginTop: 36 },
 });
