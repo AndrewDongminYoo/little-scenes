@@ -35,3 +35,17 @@ The checked-in `examples/` images are previous examples; current render evidence
 The base commit's quality and native builds passed, but native execution did not. Android aborted around two seconds after launch (SIGSEGV, Hermes/GWP-ASan stack); the root cause is not established. iOS failed while starting/connecting the Maestro XCUITest driver, before the application flow. Do not attribute either failure to this revision or claim it fixes them without a new native run.
 
 This revision also creates evidence directories before tests and retains Android logcat/activity state on failure, plus iOS device diagnostics. Diagnostic steps do not swallow test failures. No memory safety instrumentation is disabled, and no test assertion is weakened.
+
+## First PR native evidence
+
+Run 39248077130 (head 9ca1b94) passed quality and the iOS build. The iOS driver reached the application, but the first scene showed `undefined is not a function` and sharing remained disabled. This is a resource-preparation failure, not evidence that changing the Maestro selector will fix the app. Its exact call site is not yet known. Preparation errors now retain stage and stack diagnostics; the user-facing message stays on one line. This diagnostic revision does not claim a fix.
+
+Android CI builds only x86_64, matching its x86_64 emulator, rather than compiling unused device ABIs on every diagnostic run. Device architecture/release validation remains a separate gate.
+
+## Corrective follow-up: captured Worklet dependencies
+
+The actual non-minified iOS export reproduced the cause: OXC turns Worklet declarations into initialized factories. `prepareResources.__closure` captured `build` before that factory initialized; `thin` similarly captured later helpers, and `planEmbroidery` captured `shade` too early. Raw TypeScript tests preserve function hoisting and missed this. Render helpers are now declared dependency-first. A regression test runs the installed OXC transform and rejects references to later local bindings in generated factories. It failed on the original code (`resources: worklet captures build before initialization`) and passes after reordering. Native rerun remains required; the diagnostic errors are retained.
+
+## Floral spacing
+
+Flower envelopes now avoid other flower/leaf envelopes, neighbouring stroke segments and artwork margins. Replacing a closed loop can ignore that loop only, not nearby strokes. Tip decorations try alternate nearby directions and are omitted when no clear location exists. Leaves receive their own clearance check. A crowded Korean phrase is included in the extended render checks. Tests cover segment interiors, nearby strokes, margins, loop exemptions and multiple seeds. This keeps stitch rendering unchanged rather than replacing the material style.

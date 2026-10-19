@@ -1,5 +1,6 @@
 import { random, type Palette, type Point, type Writing } from '../domain/model.ts';
 import { length, resample, type Stroke } from './strokes.ts';
+import { fitsDecoration, type DecorationCircle } from './decorations';
 import { COLUMN_PITCH, VERTICAL_PITCH } from './text-layout.ts';
 
 export type SpriteKind = 'stem' | 'back' | 'chain' | 'knot' | 'petal' | 'leaf';
@@ -18,6 +19,7 @@ export type EmbroideryPlan = {
   reveal: Point[][];
   revealWidth: number;
   thickness: number;
+  decorations: DecorationCircle[];
 };
 
 export const MAX_STITCHES = 6000;
@@ -109,6 +111,19 @@ export function orderStrokes(strokes: Stroke[], writing: Writing, fontSize: numb
   return keyed.map((k) => k.stroke);
 }
 
+/** Lightens (amount > 0) or darkens a #rrggbb colour. */
+export function shade(hex: string, amount: number): string {
+  'worklet';
+  const n = parseInt(hex.slice(1), 16);
+  const ch = (v: number) => {
+    const out = amount >= 0 ? v + (255 - v) * amount : v * (1 + amount);
+    return Math.max(0, Math.min(255, Math.round(out)))
+      .toString(16)
+      .padStart(2, '0');
+  };
+  return `#${ch(n >> 16)}${ch((n >> 8) & 255)}${ch(n & 255)}`;
+}
+
 export function planEmbroidery(input: {
   strokes: Stroke[];
   fontSize: number;
@@ -127,6 +142,8 @@ export function planEmbroidery(input: {
   const leafItems: Placement[] = [];
   const flowerItems: Placement[] = [];
   const reveal: Point[][] = [];
+  const decorations: DecorationCircle[] = [];
+  const occupied: DecorationCircle[] = [];
   const push = (list: Placement[], p: Placement) => {
     if (items.length + leafItems.length + flowerItems.length < MAX_STITCHES) list.push(p);
   };
@@ -215,15 +232,29 @@ export function planEmbroidery(input: {
       knot(c.x, c.y, R * 0.3, shade(colour, -0.1));
     }
   };
-  const leaf = (c: Point, ang: number, size: number) =>
-    push(leafItems, {
-      kind: 'leaf',
-      x: c.x + Math.cos(ang) * size * 0.5,
-      y: c.y + Math.sin(ang) * size * 0.5,
-      angle: ang,
-      size,
-      color: pickFrom(rng, spec.leaves),
-    });
+  const leaf = (
+    c: Point,
+    ang: number,
+    size: number,
+    parent?: DecorationCircle,
+    ignoreStroke = -1,
+  ) => {
+    const x = c.x + Math.cos(ang) * size * 0.5,
+      y = c.y + Math.sin(ang) * size * 0.5;
+    const site = { x, y, radius: size * 0.6 };
+    if (
+      !fitsDecoration(
+        site,
+        input.strokes,
+        occupied.filter((o) => o !== parent),
+        t * 0.6,
+        ignoreStroke,
+      )
+    )
+      return;
+    occupied.push(site);
+    push(leafItems, { kind: 'leaf', x, y, angle: ang, size, color: pickFrom(rng, spec.leaves) });
+  };
 
   const meadow = input.palette === 'meadow';
   const wanted = Math.min(14, Math.max(1, Math.round(input.glyphs * (meadow ? 0.8 : 0.5))));
@@ -253,12 +284,19 @@ export function planEmbroidery(input: {
       const radius = Math.max(x1 - x0, y1 - y0) / 2;
       if (flowers < wanted && radius > t * 1.2 && radius < fs * 0.32 && rng() < loopChance) {
         const c = { x: (x0 + x1) / 2, y: (y0 + y1) / 2 };
-        const roll = rng();
-        flower(roll < 0.4 ? 'daisy' : roll < 0.75 ? 'pompom' : 'rose', c, radius * 1.3);
-        if (rng() < 0.6) leaf(c, Math.PI * (0.15 + rng() * 0.7), radius * 1.4);
-        disc(c, radius * 1.3 + t);
-        flowers++;
-        continue;
+        const ignoreStroke = input.strokes.findIndex((original) => original.points === s.points);
+        const site = { ...c, radius: radius * 1.3 * 1.4, ignoreStroke };
+        if (fitsDecoration(site, input.strokes, occupied, t * 0.6, ignoreStroke)) {
+          decorations.push(site);
+          occupied.push(site);
+          const roll = rng();
+          flower(roll < 0.4 ? 'daisy' : roll < 0.75 ? 'pompom' : 'rose', c, radius * 1.3);
+          if (rng() < 0.6)
+            leaf(c, Math.PI * (0.15 + rng() * 0.7), radius * 1.4, site, ignoreStroke);
+          disc(c, radius * 1.3 + t);
+          flowers++;
+          continue;
+        }
       }
     }
     const group = groupOf(s.points[Math.floor(s.points.length / 2)]);
@@ -319,26 +357,38 @@ export function planEmbroidery(input: {
 
   // Small blossoms sprout just beyond stroke tips, outside the letter body.
   const r = Math.min(8, Math.max(3.5, fs * 0.12));
-  const used: Point[] = [];
   for (const tip of tips
     .map((x) => ({ x, k: rng() }))
     .sort((a, b) => a.k - b.k)
     .map((x) => x.x)) {
     if (flowers >= wanted) break;
-    const c = {
-      x: tip.p.x + Math.cos(tip.dir) * (r + t * 0.4),
-      y: tip.p.y + Math.sin(tip.dir) * (r + t * 0.4),
-    };
-    if (c.x < 30 || c.x > 330 || c.y < 40 || c.y > 600) continue;
-    if (used.some((u) => Math.hypot(u.x - c.x, u.y - c.y) < r * 4)) continue;
-    used.push(c);
+    let site: DecorationCircle | undefined;
+    let direction = tip.dir;
+    for (const offset of [0, -0.4, 0.4, -0.8, 0.8]) {
+      const angle = tip.dir + offset,
+        radius = r * 1.9;
+      const candidate = {
+        x: tip.p.x + Math.cos(angle) * (radius + t),
+        y: tip.p.y + Math.sin(angle) * (radius + t),
+        radius,
+      };
+      if (fitsDecoration(candidate, input.strokes, occupied, t * 0.6)) {
+        site = candidate;
+        direction = angle;
+        break;
+      }
+    }
+    if (!site) continue;
+    const c = site;
+    decorations.push(site);
+    occupied.push(site);
     const roll = rng();
     if (roll < 0.3) {
-      flower('bud', c, r * 1.3, tip.dir);
-      leaf(tip.p, tip.dir + 1.1, r * 1.5);
+      flower('bud', c, r * 1.3, direction);
+      leaf(tip.p, direction + 1.1, r * 1.5, site);
     } else if (roll < 0.65) {
       flower('star', c, r);
-      if (rng() < 0.5) leaf(c, tip.dir - 1.2, r * 1.5);
+      if (rng() < 0.5) leaf(c, direction - 1.2, r * 1.5, site);
     } else if (roll < 0.85) {
       flower('pompom', c, r * 0.9);
     } else {
@@ -359,18 +409,6 @@ export function planEmbroidery(input: {
     reveal,
     revealWidth: Math.max(t * 2.8, 6),
     thickness: t,
+    decorations,
   };
-}
-
-/** Lightens (amount > 0) or darkens a #rrggbb colour. */
-export function shade(hex: string, amount: number): string {
-  'worklet';
-  const n = parseInt(hex.slice(1), 16);
-  const ch = (v: number) => {
-    const out = amount >= 0 ? v + (255 - v) * amount : v * (1 + amount);
-    return Math.max(0, Math.min(255, Math.round(out)))
-      .toString(16)
-      .padStart(2, '0');
-  };
-  return `#${ch(n >> 16)}${ch((n >> 8) & 255)}${ch(n & 255)}`;
 }

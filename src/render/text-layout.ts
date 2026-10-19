@@ -19,6 +19,12 @@ export type TextLayout = {
   cells: { x: number; y: number }[];
 };
 
+export const VERTICAL_PITCH = 1.02;
+export const COLUMN_PITCH = 1.3;
+
+const UPPER_RIGHT = [',', '.', '、', '。'];
+const ROTATED = ['(', ')', '-', '~', '…', '“', '”', '‘', '’', '"', "'"];
+
 const segment = (text: string) => {
   'worklet';
   return typeof Intl.Segmenter === 'function'
@@ -36,9 +42,6 @@ export function verticalGlyphs(text: string): string[] {
   }
   return out;
 }
-
-export const VERTICAL_PITCH = 1.02;
-export const COLUMN_PITCH = 1.3;
 
 /** Fills columns word by word; only a word longer than a column is split. */
 export function wrapColumns(words: string[][], rows: number): string[][] {
@@ -63,9 +66,6 @@ export function wrapColumns(words: string[][], rows: number): string[][] {
   columns.push(col);
   return columns;
 }
-
-const UPPER_RIGHT = [',', '.', '、', '。'];
-const ROTATED = ['(', ')', '-', '~', '…', '“', '”', '‘', '’', '"', "'"];
 
 export function layoutText(
   api: SkiaApi,

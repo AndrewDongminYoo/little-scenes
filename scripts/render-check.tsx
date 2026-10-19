@@ -59,6 +59,14 @@ async function main() {
           text: '안녕하세요\n이거 너무 예쁘네요\n후후',
         },
       },
+      {
+        name: 'embroidery-crowded',
+        settings: {
+          ...defaults('embroidery'),
+          writing: 'horizontal',
+          text: '안녕하세요. 적당히 바람이 시원해 기분이 너무 좋아요.',
+        },
+      },
       { name: 'embroidery-half', settings: defaults('embroidery'), reveal: 0.45 },
       {
         name: 'rain-day',

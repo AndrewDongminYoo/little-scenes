@@ -30,11 +30,15 @@ export function useResources(settings: Settings) {
         resource = await prepareInBackground(fonts, settings);
         if (active && generation.current.current(token)) setResult({ key, resources: resource });
       } catch (e) {
+        console.error(
+          '[LittleScenes] resource preparation failed',
+          e instanceof Error ? e.stack : String(e),
+        );
         if (active && generation.current.current(token))
           setResult((prev) => ({
             key,
             resources: prev.resources,
-            error: e instanceof Error ? e.message : '작품을 준비하지 못했어요.',
+            error: e instanceof Error ? e.message.split('\n')[0] : '작품을 준비하지 못했어요.',
           }));
       }
     });

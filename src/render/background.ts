@@ -9,8 +9,15 @@ import type { Settings } from '../domain/model';
 import { prepareResources } from './resources';
 
 let runtime: WorkletRuntime | undefined;
-const getRuntime = () =>
-  runtime ?? (runtime = createWorkletRuntime({ name: 'little-scenes-render' }));
+const getRuntime = () => {
+  try {
+    return runtime ?? (runtime = createWorkletRuntime({ name: 'little-scenes-render' }));
+  } catch (error) {
+    throw new Error(
+      `[render-runtime-init] ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+};
 
 /** Native CPU surfaces and text analysis run off both RN and UI threads. Web is an explicit fallback. */
 export async function prepareInBackground(fonts: SkTypefaceFontProvider, settings: Settings) {
@@ -22,7 +29,13 @@ export async function prepareInBackground(fonts: SkTypefaceFontProvider, setting
     getRuntime(),
     (provider: SkTypefaceFontProvider, value: Settings) => {
       'worklet';
-      return prepareResources(Skia, provider, value);
+      try {
+        return prepareResources(Skia, provider, value);
+      } catch (error) {
+        const detail =
+          error instanceof Error ? `${error.message}\n${error.stack ?? ''}` : String(error);
+        throw new Error(`[render-runtime-task] ${detail}`);
+      }
     },
     fonts,
     settings,

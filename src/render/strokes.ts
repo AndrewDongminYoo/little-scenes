@@ -2,6 +2,39 @@ import type { Point } from '../domain/model.ts';
 
 export type Stroke = { points: Point[]; closed: boolean };
 
+const neighbours = (i: number, w: number) => {
+  'worklet';
+  return [i - w - 1, i - w, i - w + 1, i + 1, i + w + 1, i + w, i + w - 1, i - 1];
+};
+
+const adjacent = (a: number, b: number, w: number) => {
+  'worklet';
+  const dx = Math.abs((a % w) - (b % w)),
+    dy = Math.abs(Math.floor(a / w) - Math.floor(b / w));
+  return dx <= 1 && dy <= 1 && a !== b;
+};
+
+function components(set: number[], w: number) {
+  'worklet';
+  const seen = new Set<number>();
+  let count = 0;
+  for (const s of set) {
+    if (seen.has(s)) continue;
+    count++;
+    const stack = [s];
+    seen.add(s);
+    while (stack.length) {
+      const c = stack.pop()!;
+      for (const o of set)
+        if (!seen.has(o) && adjacent(c, o, w)) {
+          seen.add(o);
+          stack.push(o);
+        }
+    }
+  }
+  return count;
+}
+
 /**
  * Zhang–Suen thinning over the foreground list only, followed by one pass that
  * removes staircase corners. `bin` must have a zero one-pixel border.
@@ -53,37 +86,6 @@ export function thin(bin: Uint8Array, w: number, h: number): Uint8Array {
     if (ring.length >= 2 && components(ring, w) === 1) img[i] = 0;
   }
   return img;
-}
-
-const neighbours = (i: number, w: number) => {
-  'worklet';
-  return [i - w - 1, i - w, i - w + 1, i + 1, i + w + 1, i + w, i + w - 1, i - 1];
-};
-const adjacent = (a: number, b: number, w: number) => {
-  'worklet';
-  const dx = Math.abs((a % w) - (b % w)),
-    dy = Math.abs(Math.floor(a / w) - Math.floor(b / w));
-  return dx <= 1 && dy <= 1 && a !== b;
-};
-function components(set: number[], w: number) {
-  'worklet';
-  const seen = new Set<number>();
-  let count = 0;
-  for (const s of set) {
-    if (seen.has(s)) continue;
-    count++;
-    const stack = [s];
-    seen.add(s);
-    while (stack.length) {
-      const c = stack.pop()!;
-      for (const o of set)
-        if (!seen.has(o) && adjacent(c, o, w)) {
-          seen.add(o);
-          stack.push(o);
-        }
-    }
-  }
-  return count;
 }
 
 /** Traces a one-pixel skeleton into open segments (node to node) and closed loops. */
