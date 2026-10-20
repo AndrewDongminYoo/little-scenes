@@ -112,6 +112,7 @@ export function frameMotion(api: SkiaApi, frame: Readonly<Frame>, running: numbe
               frame.scratch?.flakes ?? [],
               frame.interactionTime ?? frame.time,
               frame.scratchStill,
+              frame.debrisMode,
             ),
             coin: [],
             coinOpacity: 0,

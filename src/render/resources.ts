@@ -154,7 +154,7 @@ function bake(
 
 export const resourceKey = (s: Settings) => {
   'worklet';
-  if (s.scene === 'scratch') return JSON.stringify([s.scene, s.text, s.seed]);
+  if (s.scene === 'scratch') return JSON.stringify([s.scene, s.text, s.seed, s.scratchFont]);
   return s.scene === 'embroidery'
     ? JSON.stringify([s.scene, s.text, s.seed, s.thread, s.density, s.writing])
     : JSON.stringify([s.scene, s.text, s.seed, s.mood, s.intensity]);

@@ -105,6 +105,9 @@ appId: kr.donminzzi.littlescenes
     timeout: 60000
 - assertVisible: 긁은 면적 0%
 - tapOn:
+    id: scratch-debris
+- assertVisible: "가루: 주변에 남기"
+- tapOn:
     id: immersive
 # Android's first-use immersive education overlay can appear after the UI transition.
 # This is only the OS acknowledgement button, not a permission or app assertion bypass.
@@ -129,6 +132,15 @@ appId: kr.donminzzi.littlescenes
     timeout: 10000
 - assertVisible: "긁은 면적 ([1-9][0-9]?|100)%"
 - tapOn:
+    id: scratch-font
+- extendedWaitUntil:
+    visible:
+      id: share
+      enabled: true
+    timeout: 60000
+- assertVisible: "글꼴: 고딕"
+- assertVisible: "긁은 면적 ([1-9][0-9]?|100)%"
+- tapOn:
     id: share
 - takeScreenshot: evidence/scratch-share-sheet
 - stopApp
@@ -145,6 +157,8 @@ appId: kr.donminzzi.littlescenes
       id: scratch-reveal
       enabled: true
     timeout: 60000
+- assertVisible: "가루: 주변에 남기"
+- assertVisible: "글꼴: 고딕"
 - tapOn:
     id: scratch-reveal
 - assertVisible: 긁은 면적 100%
