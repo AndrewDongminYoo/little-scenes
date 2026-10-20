@@ -1,10 +1,12 @@
+import { createScratch, scratchPaths, flakePaths } from './scratch';
+import type { ScratchMotion } from '../scenes/scratch-artwork';
 import type { SkColor, SkPath, SkRSXform } from '@shopify/react-native-skia';
 import { TRAIL_POINTS, trailAlpha, type Frame, type Trail } from '../domain/model';
 import { RAIN_DIRECTION, RUNNING_FIELDS, RUNNING_MAX, runningHead } from './rain';
 import type { SkiaApi } from './resources';
 import { placeSprite } from './sprites';
 
-export type Transform = { translateX: number } | { translateY: number };
+export type Transform = { translateX: number } | { translateY: number } | { rotate: number };
 export const TOUCH_RADIUS = 15;
 
 /** Shadow shifts away from the finger as if it were a lamp; eases back with `strength`. */
@@ -88,6 +90,7 @@ export function trailColors(trail: Trail, now: number): SkColor[] {
 }
 
 export type MotionValues = {
+  scratch?: ScratchMotion;
   reveal: number;
   shadow: Transform[];
   gloss: Transform[];
@@ -100,6 +103,21 @@ export type MotionValues = {
 /** Everything the artwork needs for one fixed frame (export, previews, render checks). */
 export function frameMotion(api: SkiaApi, frame: Readonly<Frame>, running: number[]): MotionValues {
   return {
+    ...(frame.scene === 'scratch'
+      ? {
+          scratch: {
+            ...scratchPaths(api, frame.scratch ?? createScratch()),
+            ...flakePaths(
+              api,
+              frame.scratch?.flakes ?? [],
+              frame.interactionTime ?? frame.time,
+              frame.scratchStill,
+            ),
+            coin: [],
+            coinOpacity: 0,
+          },
+        }
+      : {}),
     reveal: frame.reveal,
     shadow: shadowOffset(frame.touch.x, frame.touch.y, frame.touch.strength),
     gloss: glossOffset(frame.touch.x, frame.touch.y, frame.touch.strength),

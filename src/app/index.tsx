@@ -48,6 +48,7 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 17, color: '#687269', marginTop: 8 },
   cards: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
     marginTop: 36,
     justifyContent: 'center',

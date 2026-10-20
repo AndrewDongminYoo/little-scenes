@@ -1,3 +1,4 @@
+import { createScratch, scrape, revealScratch, type ScratchState } from '../src/render/scratch';
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import React from 'react';
@@ -13,7 +14,13 @@ import { frameMotion } from '../src/render/motion';
 import { artwork } from '../src/scenes/artwork';
 import { defaults, type Settings } from '../src/domain/model';
 
-type Variant = { name: string; settings: Settings; time?: number; reveal?: number };
+type Variant = {
+  name: string;
+  settings: Settings;
+  time?: number;
+  reveal?: number;
+  scratch?: ScratchState;
+};
 
 async function main() {
   (globalThis as any).CanvasKit = await CanvasKitInit({
@@ -38,6 +45,7 @@ async function main() {
   const variants: Variant[] = [
     { name: 'embroidery', settings: defaults('embroidery') },
     { name: 'rain', settings: defaults('rain'), time: 5200 },
+    { name: 'scratch', settings: defaults('scratch'), scratch: createScratch() },
   ];
   if (process.env.RENDER_ALL)
     variants.push(
@@ -74,13 +82,28 @@ async function main() {
         time: 9000,
       },
     );
+  let scratched = createScratch();
+  for (let i = 0; i < 6; i++)
+    scratched = scrape(
+      scratched,
+      { x: 80, y: 310 + i * 19 },
+      { x: 280, y: 340 + i * 16 },
+      45,
+      i * 80,
+      2731,
+    );
+  variants.push(
+    { name: 'scratch-partial', settings: defaults('scratch'), scratch: scratched, time: 520 },
+    { name: 'scratch-revealed', settings: defaults('scratch'), scratch: revealScratch() },
+  );
   for (const v of variants) {
     const started = Date.now();
     const r = prepareResources(Skia, provider, v.settings);
     const prepared = Date.now() - started;
-    assert.ok(r.fontSize >= 20);
+    assert.ok(r.fontSize >= (r.scene === 'scratch' ? 16 : 20));
     const frame = {
       ...v.settings,
+      scratch: v.scratch,
       time: v.time ?? 1600,
       reveal: v.reveal ?? 1,
       touch: { x: -100, y: -100, strength: 0 },
@@ -118,9 +141,34 @@ async function main() {
       console.log(`${v.name}: wiped pixels ${changed}`);
       assert.ok(changed > 20000, 'Wiped letters must reveal the scene behind the glass');
       hidden.dispose();
-    } else {
+    } else if (r.scene === 'embroidery') {
       assert.ok(r.xforms.length > 50, 'Letters must be made of stitches');
       console.log(`${v.name}: ${r.xforms.length} stitches`);
+    }
+    if (v.name === 'scratch' && r.scene === 'scratch') {
+      const revealed = await drawOffscreen(
+        surface,
+        <Group transform={[{ scale: 3 }]}>
+          {artwork(v.settings, r, frameMotion(Skia, { ...frame, scratch: revealScratch() }, []))}
+        </Group>,
+      );
+      const a = image.readPixels() as Uint8Array,
+        b = revealed.readPixels() as Uint8Array;
+      let changed = 0,
+        outside = 0;
+      for (let y = 0; y < 1920; y++)
+        for (let x = 0; x < 1080; x++) {
+          const i = (y * 1080 + x) * 4;
+          const difference =
+            Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
+          if (difference > 25) {
+            if (x >= 135 && x < 945 && y >= 882 && y < 1314) changed++;
+            else outside++;
+          }
+        }
+      assert.ok(changed > 250000, 'Untouched foil must obscure the phrase, not render transparent');
+      assert.equal(outside, 0, 'Removing foil must not change the rest of the card');
+      revealed.dispose();
     }
     if (v.name === 'rain' && r.scene === 'rain') {
       for (const time of [0, 1600, 5200, 9000]) {
@@ -141,7 +189,7 @@ async function main() {
         padded.dispose();
       }
     }
-    if (v.name === 'rain' || v.name === 'embroidery') {
+    if (v.name === 'rain' || v.name === 'embroidery' || v.name === 'scratch') {
       fs.mkdirSync('assets/previews', { recursive: true });
       const previewSurface = makeOffscreenSurface(360, 640);
       const preview = await drawOffscreen(previewSurface, artwork(v.settings, r, motion));

@@ -24,6 +24,15 @@ appId: kr.donminzzi.littlescenes
     id: apply-phrase
 - tapOn:
     id: immersive
+# Android's first-use immersive education overlay can appear after the UI transition.
+# This is only the OS acknowledgement button, not a permission or app assertion bypass.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          id: android:id/ok
+          optional: true
 - takeScreenshot: evidence/embroidery
 - tapOn:
     point: 50%,50%
@@ -59,6 +68,15 @@ appId: kr.donminzzi.littlescenes
 - assertVisible: 재생
 - tapOn:
     id: immersive
+# Android's first-use immersive education overlay can appear after the UI transition.
+# This is only the OS acknowledgement button, not a permission or app assertion bypass.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          id: android:id/ok
+          optional: true
 - takeScreenshot: evidence/rain
 - tapOn:
     point: 50%,50%
@@ -70,3 +88,67 @@ appId: kr.donminzzi.littlescenes
 - tapOn:
     id: share
 - takeScreenshot: evidence/rain-share-sheet
+
+- stopApp
+- launchApp:
+    clearState: false
+- scrollUntilVisible:
+    element:
+      id: scene-scratch
+    direction: DOWN
+- tapOn:
+    id: scene-scratch
+- extendedWaitUntil:
+    visible:
+      id: share
+      enabled: true
+    timeout: 60000
+- assertVisible: 긁은 면적 0%
+- tapOn:
+    id: immersive
+# Android's first-use immersive education overlay can appear after the UI transition.
+# This is only the OS acknowledgement button, not a permission or app assertion bypass.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          id: android:id/ok
+          optional: true
+- swipe:
+    start: 22%,52%
+    end: 78%,58%
+    duration: 900
+- takeScreenshot: evidence/scratch-partial
+- tapOn:
+    point: 50%,20%
+- extendedWaitUntil:
+    visible:
+      id: share
+      enabled: true
+    timeout: 10000
+- assertVisible: "긁은 면적 ([1-9][0-9]?|100)%"
+- tapOn:
+    id: share
+- takeScreenshot: evidence/scratch-share-sheet
+- stopApp
+- launchApp:
+    clearState: false
+- scrollUntilVisible:
+    element:
+      id: scene-scratch
+    direction: DOWN
+- tapOn:
+    id: scene-scratch
+- extendedWaitUntil:
+    visible:
+      id: scratch-reveal
+      enabled: true
+    timeout: 60000
+- tapOn:
+    id: scratch-reveal
+- assertVisible: 긁은 면적 100%
+- takeScreenshot: evidence/scratch-revealed
+- tapOn:
+    id: scratch-reset
+- assertVisible: 긁은 면적 0%

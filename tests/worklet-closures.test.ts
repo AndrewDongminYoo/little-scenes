@@ -20,6 +20,8 @@ test('OXC worklet factories only capture already initialized local bindings', ()
     'text-layout',
     'motion',
     'background',
+    'scratch',
+    'scratch-resources',
   ]) {
     const filename = path.resolve(`src/render/${file}.ts`);
     const { code } = transform(fs.readFileSync(filename, 'utf8'), filename, {

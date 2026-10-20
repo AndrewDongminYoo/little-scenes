@@ -3,6 +3,7 @@ import { Image, View } from 'react-native';
 import type { SceneId } from '../domain/model';
 
 const previews = {
+  scratch: require('../../assets/previews/scratch.png'),
   embroidery: require('../../assets/previews/embroidery.png'),
   rain: require('../../assets/previews/rain.png'),
 };
