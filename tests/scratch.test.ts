@@ -82,3 +82,33 @@ test('scratch settings preserve phrase and reject unsupported angles', async () 
   assert.equal(restored.coinAngle, 45);
   assert.equal(restored.text, '내 문장');
 });
+
+test('resident debris moves only on coin contact even on bare paper', () => {
+  const s = revealScratch();
+  s.flakes = [{ x: 150, y: 350, size: 2, spin: 0, at: 0, vx: 0, vy: 0 }];
+  const far = scrape(s, { x: 50, y: 400 }, { x: 90, y: 400 }, 0, 5000, 7, 'stay');
+  assert.equal(far, s);
+  const pushed = scrape(s, { x: 120, y: 350 }, { x: 180, y: 350 }, 0, 5000, 7, 'stay');
+  assert.ok(pushed.flakes[0].x > 180);
+  assert.equal(pushed.removed, CELL_COUNT);
+  assert.equal(s.flakes[0].x, 150);
+});
+test('scratch options migrate and persist', async () => {
+  const { decodeSettings } = await import('../src/domain/model.ts');
+  const old = decodeSettings('scratch', '{"scene":"scratch"}');
+  assert.equal(old.debrisMode, 'fall');
+  assert.equal(old.scratchFont, 'handwritten');
+  const s = decodeSettings(
+    'scratch',
+    '{"scene":"scratch","debrisMode":"stay","scratchFont":"sans"}',
+  );
+  assert.equal(s.debrisMode, 'stay');
+  assert.equal(s.scratchFont, 'sans');
+});
+
+test('resident rendering ignores time and Reduced Motion; falling remains animated', async () => {
+  const { flakePosition } = await import('../src/render/scratch.ts');
+  const f = { x: 150, y: 350, at: 0, vx: 20, vy: 10, size: 2, spin: 1 };
+  assert.deepEqual(flakePosition(f, 0, false, 'stay'), flakePosition(f, 9000, true, 'stay'));
+  assert.notDeepEqual(flakePosition(f, 0), flakePosition(f, 9000));
+});

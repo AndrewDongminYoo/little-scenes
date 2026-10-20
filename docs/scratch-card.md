@@ -17,3 +17,9 @@ Maestro now visits all three scenes, performs a scratch gesture, checks nonzero 
 
 
 First native run 39366151774: quality passed; Android built and rendered a real scratch, but its first-use OS immersive-education overlay intercepted the exit tap. The previous negative 0% assertion could pass with all app controls obscured. The smoke now acknowledges the Android system overlay and requires visible share controls plus a positive nonzero progress value. This is a test harness correction, not a disabled assertion. Updated native verification is pending.
+
+## Optional debris and typography
+
+`debrisMode` defaults to `fall` for existing installs. `stay` keeps chips at the scrape edge, with no gravity, inertia, or time-based rotation. Only a swept coin contact pushes existing chips, including on already bare paper. Switching modes rebases existing fragments at their current rendered position; it does not reset wear. The 96-fragment cap remains a visual approximation, not conservation of material.
+
+`scratchFont` selects bundled Gaegu (`handwritten`, default) or Noto Sans KR (`sans`) for the hidden user phrase only. Both OFL license notices remain bundled; no new font download. The resource cache includes font choice, but font changes do not reset scratch progress. Both settings persist; progress remains session-local. Native smoke covers resident mode, changing the font after scratching, and persistence after restarting.

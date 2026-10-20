@@ -34,6 +34,7 @@ export function scrape(
   degrees: number,
   now: number,
   seed: number,
+  mode: 'fall' | 'stay' = 'fall',
 ): ScratchState {
   'worklet';
   if (![from.x, from.y, to.x, to.y, degrees, now].every(Number.isFinite)) return s;
@@ -45,15 +46,37 @@ export function scrape(
   const maxX = Math.min(COLS - 1, Math.ceil((Math.max(from.x, to.x) + 18 - FOIL.x) / CELL));
   const minY = Math.max(0, Math.floor((Math.min(from.y, to.y) - 18 - FOIL.y) / CELL));
   const maxY = Math.min(ROWS - 1, Math.ceil((Math.max(from.y, to.y) + 18 - FOIL.y) / CELL));
-  if (minX > maxX || minY > maxY) return s;
+
   const a = (degrees * Math.PI) / 180,
     c = Math.cos(a),
     sn = Math.sin(a);
   const ux = (dx * c + dy * sn) / 17,
     uy = (-dx * sn + dy * c) / 2.2;
   const len = ux * ux + uy * uy;
-  const wear = s.wear.slice(),
-    flakes = s.flakes.slice();
+  const wear = s.wear.slice();
+  let moved = false;
+  // Sweep the coin's flattened edge expanded by chip radius, including bare paper.
+  const push = (f: Flake): Flake => {
+    'worklet';
+    if (mode !== 'stay') return f;
+    const rx = 17 + f.size,
+      ry = 2.2 + f.size;
+    const ex = ((f.x - from.x) * c + (f.y - from.y) * sn) / rx;
+    const ey = (-(f.x - from.x) * sn + (f.y - from.y) * c) / ry;
+    const vx = (dx * c + dy * sn) / rx,
+      vy = (-dx * sn + dy * c) / ry;
+    const length = vx * vx + vy * vy;
+    const t = Math.max(0, Math.min(1, (ex * vx + ey * vy) / length));
+    if (Math.hypot(ex - t * vx, ey - t * vy) >= 1) return f;
+    // Move only contacted material to the leading edge, without gravity or inertia.
+    const projection = (ex * vx + ey * vy) / length;
+    const perpendicular = Math.max(0, ex * ex + ey * ey - projection * projection * length);
+    const exit = projection + Math.sqrt(Math.max(0, 1 - perpendicular) / length);
+    const shift = Math.max(0, 1 - projection + exit - projection);
+    moved = true;
+    return { ...f, x: f.x + dx * shift, y: f.y + dy * shift, spin: f.spin + 0.3, at: now };
+  };
+  const flakes = s.flakes.map(push);
   let removed = s.removed,
     changed = false,
     chips = 0;
@@ -96,7 +119,9 @@ export function scrape(
         }
       }
     }
-  return changed ? { wear, removed, flakes: [...flakes, ...emitted].slice(-MAX_FLAKES) } : s;
+  return changed || moved
+    ? { wear, removed, flakes: [...flakes, ...emitted.map(push)].slice(-MAX_FLAKES) }
+    : s;
 }
 /** Three masks rebuilt only after a scrape; row runs avoid an ever-growing stroke history. */
 export function scratchPaths(api: SkiaApi, s: ScratchState) {
@@ -128,16 +153,37 @@ export function scratchPaths(api: SkiaApi, s: ScratchState) {
   });
   return { scuffed: paths[0], worn: paths[1], open: paths[2] };
 }
+export function flakePosition(
+  f: Flake,
+  now: number,
+  still = false,
+  mode: 'fall' | 'stay' = 'fall',
+) {
+  'worklet';
+  if (mode === 'stay') return { x: f.x, y: f.y, spin: f.spin };
+  const t = still ? 1.1 : Math.min(1.1, Math.max(0, (now - f.at - 100) / 1000));
+  return {
+    x: f.x + f.vx * t * 0.45,
+    y: Math.min(510 - f.size, f.y + f.vy * t + 70 * t * t),
+    spin: f.spin + t * 4,
+  };
+}
 /** Scraped foil collects briefly, then tumbles down. Settled chips remain; finite history caps cost. */
-export function flakePaths(api: SkiaApi, flakes: Flake[], now: number, still = false) {
+export function flakePaths(
+  api: SkiaApi,
+  flakes: Flake[],
+  now: number,
+  still = false,
+  mode: 'fall' | 'stay' = 'fall',
+) {
   'worklet';
   const dark = api.PathBuilder.Make(),
     light = api.PathBuilder.Make();
   for (const f of flakes) {
-    const t = still ? 1.1 : Math.min(1.1, Math.max(0, (now - f.at - 100) / 1000));
-    const x = f.x + f.vx * t * 0.45,
-      y = Math.min(510 - f.size, f.y + f.vy * t + 70 * t * t);
-    const angle = f.spin + t * 4,
+    const position = flakePosition(f, now, still, mode);
+    const x = position.x,
+      y = position.y;
+    const angle = position.spin,
       c = Math.cos(angle),
       sn = Math.sin(angle),
       r = f.size;

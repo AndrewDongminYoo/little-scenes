@@ -12,6 +12,8 @@ export type Settings = {
   mood: 'day' | 'night';
   intensity: 1 | 2 | 3;
   coinAngle: 0 | 45 | 90;
+  debrisMode: 'fall' | 'stay';
+  scratchFont: 'handwritten' | 'sans';
 };
 export type Point = { x: number; y: number };
 export type Rect = Point & { width: number; height: number };
@@ -78,6 +80,8 @@ export function defaults(scene: SceneId): Settings {
     mood: 'night',
     intensity: 2,
     coinAngle: 45,
+    debrisMode: 'fall',
+    scratchFont: 'handwritten',
   };
 }
 export function random(seed: number): () => number {
@@ -124,6 +128,8 @@ export function decodeSettings(id: SceneId, json: string | null): Settings {
   const seed = s.seed;
   return {
     scene: id,
+    debrisMode: pick(s.debrisMode, ['fall', 'stay'] as const, base.debrisMode),
+    scratchFont: pick(s.scratchFont, ['handwritten', 'sans'] as const, base.scratchFont),
     coinAngle: pick(s.coinAngle, [0, 45, 90] as const, base.coinAngle),
     text: typeof s.text === 'string' && s.text.length <= 500 ? s.text : base.text,
     seed:

@@ -96,6 +96,30 @@ async function main() {
     { name: 'scratch-partial', settings: defaults('scratch'), scratch: scratched, time: 520 },
     { name: 'scratch-revealed', settings: defaults('scratch'), scratch: revealScratch() },
   );
+  let resident = createScratch();
+  for (let i = 0; i < 6; i++)
+    resident = scrape(
+      resident,
+      { x: 80, y: 310 + i * 19 },
+      { x: 280, y: 340 + i * 16 },
+      45,
+      i * 80,
+      2731,
+      'stay',
+    );
+  variants.push(
+    {
+      name: 'scratch-resident',
+      settings: { ...defaults('scratch'), debrisMode: 'stay' },
+      scratch: resident,
+      time: 9000,
+    },
+    {
+      name: 'scratch-sans',
+      settings: { ...defaults('scratch'), scratchFont: 'sans' },
+      scratch: revealScratch(),
+    },
+  );
   for (const v of variants) {
     const started = Date.now();
     const r = prepareResources(Skia, provider, v.settings);

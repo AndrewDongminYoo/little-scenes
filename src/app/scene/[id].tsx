@@ -4,6 +4,7 @@ import {
   scrape,
   scratchPaths,
   flakePaths,
+  flakePosition,
   FLAKE_MS,
   CELL_COUNT,
 } from '../../render/scratch';
@@ -234,7 +235,13 @@ function Scene({ id }: { id: SceneId }) {
   const scratchWorn = useDerivedValue(() => scratchShape.get().worn);
   const scratchScuffed = useDerivedValue(() => scratchShape.get().scuffed);
   const chips = useDerivedValue(() =>
-    flakePaths(Skia, scratch.get().flakes, interactionClock.get(), reduceMotion.get()),
+    flakePaths(
+      Skia,
+      scratch.get().flakes,
+      interactionClock.get(),
+      reduceMotion.get(),
+      settings.debrisMode,
+    ),
   );
   const chipDark = useDerivedValue(() => chips.get().dark);
   const chipLight = useDerivedValue(() => chips.get().light);
@@ -281,11 +288,12 @@ function Scene({ id }: { id: SceneId }) {
               coinAngle.get(),
               interactionClock.get(),
               settings.seed,
+              settings.debrisMode,
             );
             if (next !== current) {
               scratch.set(next);
               lastScrape.set(interactionClock.get());
-              if (!reduceMotion.get() && !restoring.get()) {
+              if (settings.debrisMode === 'fall' && !reduceMotion.get() && !restoring.get()) {
                 restoring.set(true);
                 scheduleOnRN(wakeTouch);
               }
@@ -332,6 +340,23 @@ function Scene({ id }: { id: SceneId }) {
     return () => clearTimeout(timer);
   }, [hint]);
   const change = (patch: Partial<Settings>) => {
+    if (patch.debrisMode && patch.debrisMode !== settings.debrisMode) {
+      const current = scratch.get();
+      const now = interactionClock.get();
+      scratch.set({
+        ...current,
+        flakes: current.flakes.map((f) => ({
+          ...f,
+          ...flakePosition(f, now, reduceMotion.get(), settings.debrisMode),
+          at: now,
+        })),
+      });
+      const animate =
+        patch.debrisMode === 'fall' && !reduceMotion.get() && current.flakes.length > 0;
+      lastScrape.set(now);
+      restoring.set(animate);
+      setTouchRunning(animate);
+    }
     const next = { ...settings, ...patch };
     setSettings(next);
     // A new phrase or layout is stitched/written again; colour and mood changes keep the moment.
@@ -533,6 +558,26 @@ function Scene({ id }: { id: SceneId }) {
                   disabled={busy || !ready}
                   onPress={() =>
                     change({ coinAngle: ((settings.coinAngle + 45) % 135) as 0 | 45 | 90 })
+                  }
+                />
+                <Button
+                  testID="scratch-debris"
+                  label={settings.debrisMode === 'fall' ? '가루: 떨어지기' : '가루: 주변에 남기'}
+                  hint="누르면 은박 가루의 움직임을 바꿔요. 주변에 남긴 가루는 동전으로 밀 수 있어요."
+                  disabled={busy || !ready}
+                  onPress={() =>
+                    change({ debrisMode: settings.debrisMode === 'fall' ? 'stay' : 'fall' })
+                  }
+                />
+                <Button
+                  testID="scratch-font"
+                  label={settings.scratchFont === 'sans' ? '글꼴: 고딕' : '글꼴: 손글씨'}
+                  hint="누르면 입력한 문구의 글꼴을 바꿔요. 긁힌 상태는 유지돼요."
+                  disabled={busy || !ready}
+                  onPress={() =>
+                    change({
+                      scratchFont: settings.scratchFont === 'sans' ? 'handwritten' : 'sans',
+                    })
                   }
                 />
                 <Button
