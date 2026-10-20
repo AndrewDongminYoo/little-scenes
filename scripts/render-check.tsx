@@ -33,6 +33,11 @@ async function main() {
   );
   assert.ok(face);
   provider.registerFont(face, 'LittleScenes');
+  const medium = Skia.Typeface.MakeFreeTypeFaceFromData(
+    Skia.Data.fromBytes(fs.readFileSync('assets/fonts/NotoSansKR-Medium.ttf')),
+  );
+  assert.ok(medium);
+  provider.registerFont(medium, 'ScratchSans');
   for (const weight of ['Regular', 'Bold']) {
     const hand = Skia.Typeface.MakeFreeTypeFaceFromData(
       Skia.Data.fromBytes(fs.readFileSync(`assets/fonts/Gaegu-${weight}.ttf`)),

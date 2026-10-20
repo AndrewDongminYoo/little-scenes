@@ -7,6 +7,7 @@ import { createGeneration } from '../domain/transactions';
 export function useResources(settings: Settings) {
   const generation = useRef(createGeneration());
   const fonts = useFonts({
+    ScratchSans: [require('../../assets/fonts/NotoSansKR-Medium.ttf')],
     LittleScenes: [require('../../assets/fonts/NotoSansKR.ttf')],
     Handwritten: [
       require('../../assets/fonts/Gaegu-Regular.ttf'),

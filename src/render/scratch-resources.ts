@@ -83,10 +83,10 @@ export function prepareScratch(
       const builder = api.ParagraphBuilder.Make({ textAlign: 2 }, fonts);
       builder
         .pushStyle({
-          fontFamilies: [s.scratchFont === 'sans' ? 'LittleScenes' : 'Handwritten'],
+          fontFamilies: [s.scratchFont === 'sans' ? 'ScratchSans' : 'Handwritten'],
           fontSize: size,
           color: api.Color('#713a28'),
-          fontStyle: { weight: 700 },
+          fontStyle: { weight: s.scratchFont === 'sans' ? 500 : 700 },
           heightMultiplier: 1.35,
         })
         .addText(s.text);
