@@ -14,3 +14,6 @@ A third, offline scene using the same 360×640 artwork and 1080×1920 PNG pipeli
 Local typecheck, lint and 36 tests pass, including directional area, cumulative/deterministic wear, bounds, finite input, no repeated debris from bare cells, and OXC closure order. Real Skia renders untouched/partial/open states. Pixel regression verifies the intact coating actually hides the phrase and full reveal changes only the foil panel. Existing embroidery/rain render regressions remain.
 
 Maestro now visits all three scenes, performs a scratch gesture, checks nonzero progress, shares the partial state, opens all, resets and checks 0%. Both platforms must export at least three 1080×1920 PNGs. Native CI results are pending until the PR run completes. Headless Linux drawing does not establish native frame rate or physical-device performance.
+
+
+First native run 39366151774: quality passed; Android built and rendered a real scratch, but its first-use OS immersive-education overlay intercepted the exit tap. The previous negative 0% assertion could pass with all app controls obscured. The smoke now acknowledges the Android system overlay and requires visible share controls plus a positive nonzero progress value. This is a test harness correction, not a disabled assertion. Updated native verification is pending.

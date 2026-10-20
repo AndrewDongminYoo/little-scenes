@@ -24,6 +24,15 @@ appId: kr.donminzzi.littlescenes
     id: apply-phrase
 - tapOn:
     id: immersive
+# Android's first-use immersive education overlay can appear after the UI transition.
+# This is only the OS acknowledgement button, not a permission or app assertion bypass.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          id: android:id/ok
+          optional: true
 - takeScreenshot: evidence/embroidery
 - tapOn:
     point: 50%,50%
@@ -59,6 +68,15 @@ appId: kr.donminzzi.littlescenes
 - assertVisible: 재생
 - tapOn:
     id: immersive
+# Android's first-use immersive education overlay can appear after the UI transition.
+# This is only the OS acknowledgement button, not a permission or app assertion bypass.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          id: android:id/ok
+          optional: true
 - takeScreenshot: evidence/rain
 - tapOn:
     point: 50%,50%
@@ -88,6 +106,15 @@ appId: kr.donminzzi.littlescenes
 - assertVisible: 긁은 면적 0%
 - tapOn:
     id: immersive
+# Android's first-use immersive education overlay can appear after the UI transition.
+# This is only the OS acknowledgement button, not a permission or app assertion bypass.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          id: android:id/ok
+          optional: true
 - swipe:
     start: 22%,52%
     end: 78%,58%
@@ -95,7 +122,12 @@ appId: kr.donminzzi.littlescenes
 - takeScreenshot: evidence/scratch-partial
 - tapOn:
     point: 50%,20%
-- assertNotVisible: 긁은 면적 0%
+- extendedWaitUntil:
+    visible:
+      id: share
+      enabled: true
+    timeout: 10000
+- assertVisible: "긁은 면적 ([1-9][0-9]?|100)%"
 - tapOn:
     id: share
 - takeScreenshot: evidence/scratch-share-sheet
