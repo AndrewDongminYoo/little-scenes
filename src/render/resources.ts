@@ -1,3 +1,4 @@
+import { prepareScratch, type ScratchResources } from './scratch-resources';
 import {
   BlurStyle,
   FilterMode,
@@ -53,7 +54,7 @@ export type RainResources = {
   soft: SkRect[];
   fontSize: number;
 };
-export type Resources = EmbroideryResources | RainResources;
+export type Resources = EmbroideryResources | RainResources | ScratchResources;
 
 const OUT = 3;
 const W = 360,
@@ -153,6 +154,7 @@ function bake(
 
 export const resourceKey = (s: Settings) => {
   'worklet';
+  if (s.scene === 'scratch') return JSON.stringify([s.scene, s.text, s.seed]);
   return s.scene === 'embroidery'
     ? JSON.stringify([s.scene, s.text, s.seed, s.thread, s.density, s.writing])
     : JSON.stringify([s.scene, s.text, s.seed, s.mood, s.intensity]);
@@ -401,6 +403,7 @@ function glassLayer(
 
 function build(api: SkiaApi, fonts: SkTypefaceFontProvider, s: Settings): Resources {
   'worklet';
+  if (s.scene === 'scratch') return prepareScratch(api, fonts, s);
   const { strokesCache, backdropCache, glassCache, clothCache } = getCaches();
   const { sheet, linen, mottle, fog } = stage('materials', () => common(api));
   const writing = s.scene === 'embroidery' ? s.writing : 'horizontal';

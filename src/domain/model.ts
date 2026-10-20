@@ -1,4 +1,5 @@
-export type SceneId = 'embroidery' | 'rain';
+import type { ScratchState } from '../render/scratch';
+export type SceneId = 'embroidery' | 'rain' | 'scratch';
 export type Palette = 'meadow' | 'dancheong' | 'red' | 'navy';
 export type Writing = 'vertical' | 'horizontal';
 export type Settings = {
@@ -10,12 +11,15 @@ export type Settings = {
   writing: Writing;
   mood: 'day' | 'night';
   intensity: 1 | 2 | 3;
+  coinAngle: 0 | 45 | 90;
 };
 export type Point = { x: number; y: number };
 export type Rect = Point & { width: number; height: number };
 /** Finger trail as flat [x, y, clockMs] triples, oldest first. */
 export type Trail = number[];
 export type Frame = Settings & {
+  scratch?: ScratchState;
+  scratchStill?: boolean;
   time: number;
   /** Independent clock for finger-trail restoration, frozen together with exports. */
   interactionTime?: number;
@@ -61,13 +65,19 @@ export function validateText(raw: string): {
 export function defaults(scene: SceneId): Settings {
   return {
     scene,
-    text: scene === 'rain' ? '흐르는 대로' : '오늘도, 천천히',
+    text:
+      scene === 'scratch'
+        ? '오늘은 당신의 날'
+        : scene === 'rain'
+          ? '흐르는 대로'
+          : '오늘도, 천천히',
     seed: 2731,
     thread: 'meadow',
     density: 'fine',
     writing: 'vertical',
     mood: 'night',
     intensity: 2,
+    coinAngle: 45,
   };
 }
 export function random(seed: number): () => number {
@@ -85,6 +95,15 @@ export function random(seed: number): () => number {
 export function freezeFrame(frame: Frame): Readonly<Frame> {
   return Object.freeze({
     ...frame,
+    ...(frame.scratch
+      ? {
+          scratch: {
+            wear: [...frame.scratch.wear],
+            flakes: frame.scratch.flakes.map((f) => ({ ...f })),
+            removed: frame.scratch.removed,
+          },
+        }
+      : {}),
     touch: Object.freeze({ ...frame.touch }),
     trail: Object.freeze([...frame.trail]) as Trail,
   });
@@ -105,6 +124,7 @@ export function decodeSettings(id: SceneId, json: string | null): Settings {
   const seed = s.seed;
   return {
     scene: id,
+    coinAngle: pick(s.coinAngle, [0, 45, 90] as const, base.coinAngle),
     text: typeof s.text === 'string' && s.text.length <= 500 ? s.text : base.text,
     seed:
       typeof seed === 'number' && Number.isInteger(seed) && seed >= 0 && seed <= 4294967295

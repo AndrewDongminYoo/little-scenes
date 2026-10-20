@@ -1,3 +1,12 @@
+import {
+  createScratch,
+  revealScratch,
+  scrape,
+  scratchPaths,
+  flakePaths,
+  FLAKE_MS,
+  CELL_COUNT,
+} from '../../render/scratch';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
@@ -59,7 +68,7 @@ const PALETTES = [
 ] as const;
 export default function SceneRoute() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  if (id !== 'embroidery' && id !== 'rain')
+  if (id !== 'embroidery' && id !== 'rain' && id !== 'scratch')
     return (
       <SafeAreaView>
         <Text>작품을 찾지 못했어요.</Text>
@@ -73,8 +82,9 @@ function Scene({ id }: { id: SceneId }) {
     [loaded, setLoaded] = useState(false),
     [editing, setEditing] = useState(false),
     [immersive, setImmersive] = useState(false),
-    [playing, setPlaying] = useState(true),
+    [playing, setPlaying] = useState(id !== 'scratch'),
     [touchRunning, setTouchRunning] = useState(false),
+    [scratchPercent, setScratchPercent] = useState(0),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState(''),
     [hint, setHint] = useState(false),
@@ -90,7 +100,15 @@ function Scene({ id }: { id: SceneId }) {
     touchY = useSharedValue(-100),
     touchStrength = useSharedValue(0),
     trail = useSharedValue<number[]>([]),
-    shareFrozen = useSharedValue(false);
+    shareFrozen = useSharedValue(false),
+    scratch = useSharedValue(createScratch()),
+    previousScratch = useSharedValue<{ x: number; y: number } | null>(null),
+    lastScrape = useSharedValue(-FLAKE_MS),
+    coinAngle = useSharedValue(settings.coinAngle),
+    reduceMotion = useSharedValue(false);
+  useEffect(() => {
+    coinAngle.set(settings.coinAngle);
+  }, [settings.coinAngle, coinAngle]);
   const reduced = useRef(false);
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
   const [focused, setFocused] = useState(false);
@@ -120,6 +138,7 @@ function Scene({ id }: { id: SceneId }) {
     const update = (enabled: boolean) => {
       if (!alive) return;
       reduced.current = enabled;
+      reduceMotion.set(enabled);
       if (enabled) {
         setPlaying(false);
         clock.set(1600);
@@ -131,7 +150,7 @@ function Scene({ id }: { id: SceneId }) {
       alive = false;
       sub.remove();
     };
-  }, [clock]);
+  }, [clock, reduceMotion]);
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
       active.set(false);
@@ -175,6 +194,14 @@ function Scene({ id }: { id: SceneId }) {
       active.set(false);
       scheduleOnRN(finishEmbroidery);
     }
+    if (
+      id === 'scratch' &&
+      restoring.get() &&
+      next.interactionTime - lastScrape.get() >= FLAKE_MS
+    ) {
+      restoring.set(false);
+      scheduleOnRN(finishTouch);
+    }
     const points = trail.get();
     if (
       restoring.get() &&
@@ -202,17 +229,70 @@ function Scene({ id }: { id: SceneId }) {
   const runningDrops = useDerivedValue(() => runningXforms(Skia, running, clock.get()), [running]);
   const trailSprites = useDerivedValue(() => trailXforms(Skia, trail.get()));
   const trailAlphas = useDerivedValue(() => trailColors(trail.get(), interactionClock.get()));
+  const scratchShape = useDerivedValue(() => scratchPaths(Skia, scratch.get()));
+  const scratchOpen = useDerivedValue(() => scratchShape.get().open);
+  const scratchWorn = useDerivedValue(() => scratchShape.get().worn);
+  const scratchScuffed = useDerivedValue(() => scratchShape.get().scuffed);
+  const chips = useDerivedValue(() =>
+    flakePaths(Skia, scratch.get().flakes, interactionClock.get(), reduceMotion.get()),
+  );
+  const chipDark = useDerivedValue(() => chips.get().dark);
+  const chipLight = useDerivedValue(() => chips.get().light);
+  const coin = useDerivedValue(() => [
+    { translateX: touchX.get() },
+    { translateY: touchY.get() },
+    { rotate: (coinAngle.get() * Math.PI) / 180 },
+  ]);
+  const reportScratch = useCallback(
+    (removed: number) => setScratchPercent(Math.round((removed / CELL_COUNT) * 100)),
+    [],
+  );
+  const resetScratch = () => {
+    setScratchPercent(0);
+    scratch.set(createScratch());
+    previousScratch.set(null);
+    restoring.set(false);
+    touchStrength.set(0);
+    setTouchRunning(false);
+  };
   const rect = fitRect(viewport.width, viewport.height);
   const exit = useCallback(() => setImmersive(false), []);
   const pan = Gesture.Pan()
     .minDistance(8)
-    .enabled(!busy)
+    .enabled(!busy && ready && loaded && !editing)
+    .onBegin(() => {
+      previousScratch.set(null);
+    })
     .onUpdate((e) => {
+      if (shareFrozen.get()) return;
       const p = toLogicalPoint({ x: e.x, y: e.y }, rect);
       if (p) {
         touchX.set(p.x);
         touchY.set(p.y);
         touchStrength.set(1);
+        if (id === 'scratch') {
+          const previous = previousScratch.get();
+          if (previous) {
+            const current = scratch.get();
+            const next = scrape(
+              current,
+              previous,
+              p,
+              coinAngle.get(),
+              interactionClock.get(),
+              settings.seed,
+            );
+            if (next !== current) {
+              scratch.set(next);
+              lastScrape.set(interactionClock.get());
+              if (!reduceMotion.get() && !restoring.get()) {
+                restoring.set(true);
+                scheduleOnRN(wakeTouch);
+              }
+            }
+          }
+          previousScratch.set(p);
+        }
         if (id === 'rain') {
           if (!restoring.get()) {
             restoring.set(true);
@@ -220,10 +300,14 @@ function Scene({ id }: { id: SceneId }) {
           }
           trail.set(pushTrail(trail.get(), p.x, p.y, interactionClock.get()));
         }
+      } else {
+        previousScratch.set(null);
       }
     })
     .onFinalize(() => {
-      touchStrength.set(withTiming(0, { duration: 3200 }));
+      if (id === 'scratch') scheduleOnRN(reportScratch, scratch.get().removed);
+      previousScratch.set(null);
+      touchStrength.set(withTiming(0, { duration: id === 'scratch' ? 180 : 3200 }));
     });
   const tap = Gesture.Tap()
     .maxDistance(7)
@@ -256,7 +340,8 @@ function Scene({ id }: { id: SceneId }) {
       trail.set([]);
       restoring.set(false);
       setTouchRunning(false);
-      setPlaying(!reduced.current);
+      setPlaying(id !== 'scratch' && !reduced.current);
+      if (id === 'scratch') resetScratch();
     }
     saveSettings(next).catch(() => {
       if (mounted.current) setNotice('설정을 저장하지 못했어요. 앱을 닫기 전에 다시 적용해주세요.');
@@ -294,6 +379,8 @@ function Scene({ id }: { id: SceneId }) {
                 strength: touchStrength.get(),
               },
               trail: trail.get(),
+              scratch: id === 'scratch' ? scratch.get() : undefined,
+              scratchStill: reduceMotion.get(),
             };
           });
           await sharePng(freezeFrame({ ...settings, ...frozen }), resources);
@@ -301,7 +388,7 @@ function Scene({ id }: { id: SceneId }) {
         } finally {
           shareFrozen.set(false);
           if (mounted.current) {
-            touchStrength.set(withTiming(0, { duration: 3200 }));
+            touchStrength.set(withTiming(0, { duration: id === 'scratch' ? 180 : 3200 }));
             setBusy(false);
           }
         }
@@ -326,7 +413,11 @@ function Scene({ id }: { id: SceneId }) {
           <Text style={styles.mark}>Little Scenes</Text>
         </View>
       )}
-      <View style={styles.stage} onLayout={(e) => setViewport(e.nativeEvent.layout)}>
+      <View
+        testID="artwork-stage"
+        style={styles.stage}
+        onLayout={(e) => setViewport(e.nativeEvent.layout)}
+      >
         <GestureDetector gesture={gesture}>
           <View
             collapsable={false}
@@ -355,6 +446,15 @@ function Scene({ id }: { id: SceneId }) {
                   ]}
                 >
                   {artwork(settings, resources, {
+                    scratch: {
+                      open: scratchOpen,
+                      worn: scratchWorn,
+                      scuffed: scratchScuffed,
+                      dark: chipDark,
+                      light: chipLight,
+                      coin,
+                      coinOpacity: touchStrength,
+                    },
                     reveal,
                     shadow,
                     gloss,
@@ -425,6 +525,28 @@ function Scene({ id }: { id: SceneId }) {
                   }
                 />
               </>
+            ) : id === 'scratch' ? (
+              <>
+                <Button
+                  label={`동전 각도 ${settings.coinAngle}°`}
+                  hint="누르면 동전 날이 45도씩 회전해요. 날과 나란히 긁으면 가늘고, 가로질러 긁으면 넓게 벗겨져요."
+                  disabled={busy || !ready}
+                  onPress={() =>
+                    change({ coinAngle: ((settings.coinAngle + 45) % 135) as 0 | 45 | 90 })
+                  }
+                />
+                <Button
+                  testID="scratch-reveal"
+                  label="모두 열기"
+                  hint="긁는 동작 없이 숨긴 문구를 보여줘요."
+                  disabled={busy || !ready}
+                  onPress={() => {
+                    scratch.set(revealScratch());
+                    touchStrength.set(0);
+                    setScratchPercent(100);
+                  }}
+                />
+              </>
             ) : (
               <>
                 <Button
@@ -460,10 +582,20 @@ function Scene({ id }: { id: SceneId }) {
               onPress={() => setEditing(true)}
             />
             <Button
-              label={id === 'embroidery' ? '다시 수놓기' : playing ? '일시정지' : '재생'}
+              testID={id === 'scratch' ? 'scratch-reset' : undefined}
+              label={
+                id === 'scratch'
+                  ? '다시 덮기'
+                  : id === 'embroidery'
+                    ? '다시 수놓기'
+                    : playing
+                      ? '일시정지'
+                      : '재생'
+              }
               disabled={busy || !resources}
               onPress={() => {
-                if (id === 'embroidery') {
+                if (id === 'scratch') resetScratch();
+                else if (id === 'embroidery') {
                   clock.set(0);
                   setPlaying(true);
                 } else setPlaying((p) => !p);
@@ -483,8 +615,15 @@ function Scene({ id }: { id: SceneId }) {
               onPress={() => void share()}
             />
           </View>
+          {id === 'scratch' && (
+            <Text testID="scratch-progress" accessibilityLiveRegion="polite" style={styles.note}>
+              긁은 면적 {scratchPercent}%
+            </Text>
+          )}
           <Text style={styles.note}>
-            작품을 드래그해보세요 · 공유 이미지에는 도구가 담기지 않아요
+            {id === 'scratch'
+              ? '동전 날과 나란히는 가늘게, 가로질러 긁으면 넓게 벗겨져요'
+              : '작품을 드래그해보세요 · 공유 이미지에는 도구가 담기지 않아요'}
           </Text>
         </View>
       )}

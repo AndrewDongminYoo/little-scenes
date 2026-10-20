@@ -1,3 +1,4 @@
+import { scratchArtwork, type ScratchMotion } from './scratch-artwork';
 import React from 'react';
 import {
   Atlas,
@@ -24,6 +25,7 @@ import { LINEN_TILE } from '../render/shaders';
 
 type Dynamic<T> = T | SharedValue<T>;
 export type Motion = {
+  scratch?: ScratchMotion;
   reveal: Dynamic<number>;
   shadow: Dynamic<Transform[]>;
   gloss: Dynamic<Transform[]>;
@@ -36,6 +38,10 @@ const full = { x: 0, y: 0, width: 360, height: 640 };
 
 /** The artwork alone, in 360×640 logical units. No UI ever enters this tree. */
 export function artwork(s: Settings, r: Resources, m: Motion): React.ReactElement {
+  if (r.scene === 'scratch') {
+    if (!m.scratch) throw new Error('복권 상태를 준비하지 못했어요.');
+    return scratchArtwork(r, m.scratch);
+  }
   if (r.scene === 'embroidery')
     return (
       <Group clip={full}>

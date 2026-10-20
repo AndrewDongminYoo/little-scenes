@@ -17,4 +17,10 @@ export const scenes: {
     description: '김 서린 창에 손끝으로 마음을 남겨요.',
     kind: '계속 흐르는 모션',
   },
+  {
+    id: 'scratch',
+    name: '행운의 복권',
+    description: '은박 아래 숨긴 문장을 동전으로 꺼내요.',
+    kind: '손끝으로 긁는 카드',
+  },
 ];
