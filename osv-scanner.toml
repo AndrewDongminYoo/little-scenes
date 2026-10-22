@@ -1,0 +1,5 @@
+# Approved by the operator on 2026-10-22.
+[[IgnoredVulns]]
+id = "GHSA-86w9-cpqp-85rv"
+ignoreUntil = 2026-11-05
+reason = "Operator-approved temporary risk acceptance: existing Expo 58 CLI transitive node-forge 1.4.0 has no patched release as of 2026-10-22; certificate verification is reachable. Recheck and remove when a compatible patch is available."
