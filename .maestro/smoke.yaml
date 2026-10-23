@@ -45,6 +45,14 @@ appId: kr.donminzzi.littlescenes
     timeout: 60000
 - tapOn:
     id: share
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible:
+            text: Copy
+          timeout: 60000
 - takeScreenshot: evidence/embroidery-share-sheet
 - stopApp
 - launchApp:
@@ -87,6 +95,14 @@ appId: kr.donminzzi.littlescenes
     timeout: 60000
 - tapOn:
     id: share
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible:
+            text: Copy
+          timeout: 60000
 - takeScreenshot: evidence/rain-share-sheet
 
 - stopApp
@@ -96,6 +112,8 @@ appId: kr.donminzzi.littlescenes
     element:
       id: scene-scratch
     direction: DOWN
+    visibilityPercentage: 50
+    centerElement: true
 - tapOn:
     id: scene-scratch
 - extendedWaitUntil:
@@ -106,7 +124,7 @@ appId: kr.donminzzi.littlescenes
 - assertVisible: 긁은 면적 0%
 - tapOn:
     id: scratch-debris
-- assertVisible: "가루: 주변에 남기"
+- assertVisible: '가루: 주변에 남기'
 - tapOn:
     id: immersive
 # Android's first-use immersive education overlay can appear after the UI transition.
@@ -130,7 +148,7 @@ appId: kr.donminzzi.littlescenes
       id: share
       enabled: true
     timeout: 10000
-- assertVisible: "긁은 면적 ([1-9][0-9]?|100)%"
+- assertVisible: '긁은 면적 ([1-9][0-9]?|100)%'
 - tapOn:
     id: scratch-font
 - extendedWaitUntil:
@@ -138,10 +156,18 @@ appId: kr.donminzzi.littlescenes
       id: share
       enabled: true
     timeout: 60000
-- assertVisible: "글꼴: 고딕"
-- assertVisible: "긁은 면적 ([1-9][0-9]?|100)%"
+- assertVisible: '글꼴: 고딕'
+- assertVisible: '긁은 면적 ([1-9][0-9]?|100)%'
 - tapOn:
     id: share
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible:
+            text: Copy
+          timeout: 60000
 - takeScreenshot: evidence/scratch-share-sheet
 - stopApp
 - launchApp:
@@ -150,6 +176,8 @@ appId: kr.donminzzi.littlescenes
     element:
       id: scene-scratch
     direction: DOWN
+    visibilityPercentage: 50
+    centerElement: true
 - tapOn:
     id: scene-scratch
 - extendedWaitUntil:
@@ -157,8 +185,8 @@ appId: kr.donminzzi.littlescenes
       id: scratch-reveal
       enabled: true
     timeout: 60000
-- assertVisible: "가루: 주변에 남기"
-- assertVisible: "글꼴: 고딕"
+- assertVisible: '가루: 주변에 남기'
+- assertVisible: '글꼴: 고딕'
 - tapOn:
     id: scratch-reveal
 - assertVisible: 긁은 면적 100%

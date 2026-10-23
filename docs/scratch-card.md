@@ -15,8 +15,12 @@ Local typecheck, lint and 36 tests pass, including directional area, cumulative/
 
 Maestro now visits all three scenes, performs a scratch gesture, checks nonzero progress, shares the partial state, opens all, resets and checks 0%. Both platforms must export at least three 1080×1920 PNGs. Native CI results are pending until the PR run completes. Headless Linux drawing does not establish native frame rate or physical-device performance.
 
-
 First native run 39366151774: quality passed; Android built and rendered a real scratch, but its first-use OS immersive-education overlay intercepted the exit tap. The previous negative 0% assertion could pass with all app controls obscured. The smoke now acknowledges the Android system overlay and requires visible share controls plus a positive nonzero progress value. This is a test harness correction, not a disabled assertion. Updated native verification is pending.
+
+The iOS smoke flow waits for the system share sheet’s `Copy` action after each share tap before taking its share-sheet screenshot and stopping the app.
+PNG writing precedes share-sheet presentation in `sharePng`, so this wait prevents app termination during export.
+Run 39800329936 attempt 2 passed the iOS smoke commands but produced only embroidery and scratch PNGs; the rain screenshot still showed `준비 중` immediately before app termination.
+The existing three-PNG verification remains required, and the corrected native run is pending.
 
 ## Optional debris and typography
 

@@ -23,7 +23,7 @@
     "web": {
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": ["expo-router", "expo-font", "expo-asset", "expo-sharing"],
+    "plugins": ["expo-router", "expo-font", "expo-asset", "expo-sharing", "expo-status-bar"],
     "scheme": "little-scenes"
   }
 }
