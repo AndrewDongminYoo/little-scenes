@@ -45,6 +45,14 @@ appId: kr.donminzzi.littlescenes
     timeout: 60000
 - tapOn:
     id: share
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible:
+            text: Copy
+          timeout: 60000
 - takeScreenshot: evidence/embroidery-share-sheet
 - stopApp
 - launchApp:
@@ -87,6 +95,14 @@ appId: kr.donminzzi.littlescenes
     timeout: 60000
 - tapOn:
     id: share
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible:
+            text: Copy
+          timeout: 60000
 - takeScreenshot: evidence/rain-share-sheet
 
 - stopApp
@@ -144,6 +160,14 @@ appId: kr.donminzzi.littlescenes
 - assertVisible: '긁은 면적 ([1-9][0-9]?|100)%'
 - tapOn:
     id: share
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible:
+            text: Copy
+          timeout: 60000
 - takeScreenshot: evidence/scratch-share-sheet
 - stopApp
 - launchApp:
