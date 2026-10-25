@@ -25,6 +25,19 @@ updates:
       day: monday
       timezone: Asia/Seoul
     open-pull-requests-limit: 3
+    ignore:
+      # The React Native version is chosen by the upgrade path, not by Dependabot.
+      # update-types limits this to version updates; security updates still open.
+      - dependency-name: react-native
+        update-types:
+          - version-update:semver-patch
+          - version-update:semver-minor
+          - version-update:semver-major
+      - dependency-name: '@react-native/*'
+        update-types:
+          - version-update:semver-patch
+          - version-update:semver-minor
+          - version-update:semver-major
     groups:
       npm-minor-patch:
         patterns:
