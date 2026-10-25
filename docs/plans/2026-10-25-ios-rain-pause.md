@@ -17,7 +17,9 @@ No failing traced press has been captured yet.
 Run 40178393579 passed the ten-cycle native regression and the original smoke flow.
 Its native traces confirm ten actual pause and resume presses with alternating playback state.
 The same binary passed twenty local accessibility-press cycles.
-The local HID backend failed before delivery, and permission to install Maestro for equivalent local touch reproduction is pending.
+The local idb HID backend failed before delivery.
+Maestro 2.11.0 subsequently passed fifty local pause/resume cycles with the same binary on iOS 27.0.
+Its execution artifact confirms fifty pause taps, fifty resume taps, and 150 state assertions.
 Temporary application traces are now removed, and the final candidate must pass the native flows again without tracing overhead.
 This removes diagnostic-only production code; it does not establish a fix for the original intermittent failure.
 

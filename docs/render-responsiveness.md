@@ -62,6 +62,7 @@ Run 40170264543 failed after one native tap on the rain pause button: the expect
 The unchanged application passed run 40171724354, and diagnostic run 40174699179 recorded a successful pause press followed by `playing = false` about 11 milliseconds later.
 Run 40178393579 passed ten consecutive pause/resume cycles, the original smoke flow, native PNG verification, and both platform jobs.
 Its logs record all ten actual pause and resume presses and alternating playback state.
+The same binary passed fifty additional local Maestro 2.11.0 cycles on iOS 27.0; the execution artifact records fifty pause taps, fifty resume taps, and 150 completed visibility assertions.
 These results do not establish the cause of the original intermittent failure.
 
 The follow-up retains `.maestro/rain-playback.yaml` as a separate native regression with every transition asserted and no retries.

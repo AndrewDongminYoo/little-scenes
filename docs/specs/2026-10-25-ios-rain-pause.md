@@ -19,6 +19,7 @@ Run 40178393579 passed all ten native pause/resume cycles, the original smoke fl
 Its logs contain all ten pause and resume presses followed by the expected state changes.
 Twenty additional local accessibility-press cycles passed on iOS 27.0.
 Local HID input failed at the tool boundary with an invalidated dtuhidd connection, so those accessibility results do not reproduce the original touch backend.
+The same binary subsequently passed fifty local Maestro 2.11.0 pause/resume cycles on iOS 27.0, with fifty completed pause taps, fifty completed resume taps, and 150 completed state assertions in the execution artifact.
 Temporary application traces are removed from the final candidate.
 The original intermittent failure remains unconfirmed and must not be described as fixed.
 
