@@ -24,12 +24,7 @@ export function Button({
       accessibilityHint={hint}
       accessibilityState={{ disabled, selected }}
       disabled={disabled}
-      onPressIn={() => console.error('[press-trace]', label, 'in')}
-      onPressOut={() => console.error('[press-trace]', label, 'out')}
-      onPress={() => {
-        console.error('[press-trace]', label, 'press');
-        onPress();
-      }}
+      onPress={onPress}
       style={({ pressed }) => [
         styles.button,
         selected && styles.selected,

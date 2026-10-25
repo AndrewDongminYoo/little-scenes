@@ -55,3 +55,15 @@ Flower envelopes now avoid other flower/leaf envelopes, neighbouring stroke segm
 Run 39251928359 rendered both scenes and reached the embroidery native share sheet. The Android smoke flow then failed because it unconditionally tapped `일시정지`, but the screenshot showed `재생`. The emulator runner disables system animations; the app's Reduced Motion path starts paused. The flow now conditionally starts playback if already paused, requires `일시정지`, taps it, and requires `재생`. No readiness, rendering or export checks are removed. Reference: https://docs.maestro.dev/maestro-flows/flow-control-and-logic/conditions . Full two-scene PNG validation is still pending the corrected flow.
 
 The same run's iOS job built successfully but again stopped during XCUITest driver startup (no app flow or screenshots). Its logs show the default 120-second driver connection timeout. The iOS smoke step now allows at most 300 seconds for driver startup, retaining the 10-minute step cap and every test assertion. This is the documented CI startup-timeout configuration, not proof that the underlying driver issue is fixed: https://docs.maestro.dev/maestro-cli/run-your-first-test-with-the-maestro-cli .
+
+## iOS rain playback follow-up
+
+Run 40170264543 failed after one native tap on the rain pause button: the expected play label did not appear.
+The unchanged application passed run 40171724354, and diagnostic run 40174699179 recorded a successful pause press followed by `playing = false` about 11 milliseconds later.
+Run 40178393579 passed ten consecutive pause/resume cycles, the original smoke flow, native PNG verification, and both platform jobs.
+Its logs record all ten actual pause and resume presses and alternating playback state.
+These results do not establish the cause of the original intermittent failure.
+
+The follow-up retains `.maestro/rain-playback.yaml` as a separate native regression with every transition asserted and no retries.
+CI preserves the compiled simulator app as a tar archive before the flow so the same binary can be reused for diagnosis without recompilation.
+Temporary application tracing is removed from the final candidate, whose native results must be checked independently.

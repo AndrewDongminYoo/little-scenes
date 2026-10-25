@@ -14,6 +14,13 @@ Temporary traces now use Error level, matching the retained native logs.
 Run 40174699179 confirmed that the trace reader captures the press and resulting state transition.
 No failing traced press has been captured yet.
 
+Run 40178393579 passed the ten-cycle native regression and the original smoke flow.
+Its native traces confirm ten actual pause and resume presses with alternating playback state.
+The same binary passed twenty local accessibility-press cycles.
+The local HID backend failed before delivery, and permission to install Maestro for equivalent local touch reproduction is pending.
+Temporary application traces are now removed, and the final candidate must pass the native flows again without tracing overhead.
+This removes diagnostic-only production code; it does not establish a fix for the original intermittent failure.
+
 ## Correction
 
 1. Use the trace to select the smallest input, application-state, or test-driver correction.

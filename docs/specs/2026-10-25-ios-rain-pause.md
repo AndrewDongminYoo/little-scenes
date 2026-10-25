@@ -15,10 +15,17 @@ These passing runs establish intermittence, not a correction.
 Identify whether the press reaches React Native and whether playback changes afterward.
 Fix the observed cause with the smallest change and retain the existing pause assertion.
 Use temporary press and playback traces for the diagnostic candidate, then remove them from the final implementation.
+Run 40178393579 passed all ten native pause/resume cycles, the original smoke flow, PNG verification, and both platform jobs.
+Its logs contain all ten pause and resume presses followed by the expected state changes.
+Twenty additional local accessibility-press cycles passed on iOS 27.0.
+Local HID input failed at the tool boundary with an invalidated dtuhidd connection, so those accessibility results do not reproduce the original touch backend.
+Temporary application traces are removed from the final candidate.
+The original intermittent failure remains unconfirmed and must not be described as fixed.
 
 ## Acceptance
 
 - Capture native evidence that distinguishes missing input from an incorrect state transition.
+  This criterion remains unresolved for the original failing press.
 - Exercise ten consecutive pause/resume cycles with every transition asserted.
 - Require playback to start when needed, pause on one tap, and expose `재생` afterward.
 - Preserve Reduced Motion behavior and the existing rendering and sharing assertions.

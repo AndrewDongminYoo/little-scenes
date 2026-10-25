@@ -138,8 +138,8 @@ jobs:
         env:
           MAESTRO_DRIVER_STARTUP_TIMEOUT: 300000
         run: maestro --device "$IOS_SIMULATOR_UDID" test --format junit --output evidence/ios.xml .maestro/smoke.yaml
-      - name: Collect iOS diagnostics
-        if: always()
+      - name: Collect iOS failure diagnostics
+        if: failure()
         run: bash scripts/collect-ios-diagnostics.sh
       - name: Verify native PNG output
         run: |
