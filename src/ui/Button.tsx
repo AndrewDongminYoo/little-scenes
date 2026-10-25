@@ -24,10 +24,10 @@ export function Button({
       accessibilityHint={hint}
       accessibilityState={{ disabled, selected }}
       disabled={disabled}
-      onPressIn={() => console.info('[press-trace]', label, 'in')}
-      onPressOut={() => console.info('[press-trace]', label, 'out')}
+      onPressIn={() => console.error('[press-trace]', label, 'in')}
+      onPressOut={() => console.error('[press-trace]', label, 'out')}
       onPress={() => {
-        console.info('[press-trace]', label, 'press');
+        console.error('[press-trace]', label, 'press');
         onPress();
       }}
       style={({ pressed }) => [

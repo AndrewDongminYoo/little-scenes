@@ -92,7 +92,7 @@ function Scene({ id }: { id: SceneId }) {
     [viewport, setViewport] = useState({ width: 0, height: 0 });
   const { resources, ready, error } = useResources(settings);
   useEffect(() => {
-    console.info('[playback-trace]', id, playing);
+    console.error('[playback-trace]', id, playing);
   }, [id, playing]);
   const gate = useRef(createShareGate());
   const mounted = useRef(true);
