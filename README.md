@@ -42,7 +42,10 @@ npx expo export --platform all
 
 `render:check`는 실제 CanvasKit/Skia로 같은 작품 컴포넌트를 렌더링해 `examples/`에 PNG를 생성합니다. `RENDER_ALL=1 RENDER_OUT=<dir>`를 주면 가로쓰기·팔레트·절반 수놓기·낮 장면 변형도 그립니다. 생성형 이미지나 앱 스크린샷이 아닙니다. Linux의 이 검증은 iOS/Android GPU·제스처·OS 공유 검증을 대체하지 않습니다.
 
-`.github/workflows/ci.yml`은 품질 검사 후 iOS/Android 네이티브 빌드와 Maestro 흐름을 수행하도록 구성했습니다. `.maestro/smoke.yaml`은 갤러리, 문구 편집, 감상 모드 복귀, 세 작품 공유 시트를 실행하고 화면을 보존합니다. 두 플랫폼에서 앱 캐시에 남은 PNG를 회수해 크기를 검사합니다. 실제 CI 실행 결과는 `docs/verification.md`와 GitHub run을 확인하세요. 워크플로 파일이 존재하는 것만으로 통과한 것이 아닙니다.
+`.github/workflows/ci.yml` runs typecheck, lint, domain tests, the production Worklet transform regression, all Skia render variants (`RENDER_ALL=1`), dependency checks, and iOS/Android/Web JavaScript exports on Linux.
+Native builds and Maestro flows are no longer automatic CI gates.
+The retained `.maestro/` flows support local device checks.
+See [the CI validation contract](docs/ci-validation.md) for coverage and limits.
 
 ## 구조
 
