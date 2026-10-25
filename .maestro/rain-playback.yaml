@@ -1,0 +1,25 @@
+appId: kr.donminzzi.littlescenes
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: scene-rain
+- extendedWaitUntil:
+    visible:
+      id: share
+      enabled: true
+    timeout: 60000
+- runFlow:
+    when:
+      visible: 재생
+    commands:
+      - tapOn: 재생
+- repeat:
+    times: 10
+    commands:
+      - assertVisible: 일시정지
+      - tapOn: 일시정지
+      - assertVisible: 재생
+      - tapOn: 재생
+      - assertVisible: 일시정지
+- takeScreenshot: evidence/rain-playback

@@ -6,6 +6,13 @@
 2. Add temporary press-event traces in `src/ui/Button.tsx` and playback traces in `src/app/scene/[id].tsx`.
 3. Collect iOS diagnostics on success and failure in `.github/workflows/ci.yml` so a passing reproduction still provides event evidence.
 4. Run the unchanged Maestro smoke flow in a draft follow-up PR.
+5. Since that flow passed, use `.maestro/rain-playback.yaml` to assert ten consecutive pause/resume cycles without retries.
+6. Preserve the simulator app before the repeated test so the same compiled binary remains available if diagnosis needs another input backend.
+
+The first diagnostic candidate used Info logs, which the default log readers can omit.
+Temporary traces now use Error level, matching the retained native logs.
+Run 40174699179 confirmed that the trace reader captures the press and resulting state transition.
+No failing traced press has been captured yet.
 
 ## Correction
 

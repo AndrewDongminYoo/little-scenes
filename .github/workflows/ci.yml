@@ -118,8 +118,21 @@ jobs:
       - name: Build unsigned simulator app
         run: |
           xcodebuild -workspace ios/LittleScenes.xcworkspace -scheme LittleScenes -configuration Release -sdk iphonesimulator -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_UDID" -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+      - name: Archive diagnostic simulator app
+        run: tar -czf "$RUNNER_TEMP/LittleScenes.app.tar.gz" -C build/Build/Products/Release-iphonesimulator LittleScenes.app
+      - name: Preserve diagnostic simulator app
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ios-diagnostic-app
+          path: ${{ runner.temp }}/LittleScenes.app.tar.gz
+          retention-days: 3
       - name: Install simulator app
         run: xcrun simctl install "$IOS_SIMULATOR_UDID" build/Build/Products/Release-iphonesimulator/LittleScenes.app
+      - name: iOS repeated playback regression
+        timeout-minutes: 10
+        env:
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: 300000
+        run: maestro --device "$IOS_SIMULATOR_UDID" test --format junit --output evidence/ios-playback.xml .maestro/rain-playback.yaml
       - name: iOS smoke test
         timeout-minutes: 10
         env:
