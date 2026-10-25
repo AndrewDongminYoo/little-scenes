@@ -66,5 +66,14 @@ The same binary passed fifty additional local Maestro 2.11.0 cycles on iOS 27.0;
 These results do not establish the cause of the original intermittent failure.
 
 The follow-up retains `.maestro/rain-playback.yaml` as a separate native regression with every transition asserted and no retries.
-CI preserves the compiled simulator app as a tar archive before the flow so the same binary can be reused for diagnosis without recompilation.
-Temporary application tracing is removed from the final candidate, whose native results must be checked independently.
+The follow-up CI preserved the compiled simulator app as a tar archive before the flow so the same binary could be reused for diagnosis without recompilation.
+Temporary application tracing was removed from final head `05223d5`.
+Run `40183456700` passed quality, iOS repeated playback, the original iOS smoke flow, and native PNG verification.
+Android built, booted, and installed successfully but failed the `scene-embroidery` visibility assertion.
+The operator accepted that known failure and PR #9 merged as `5af351d`; this is not evidence of a recurring iOS pause failure.
+
+## Automatic CI policy after PR #9
+
+[The CI validation contract](ci-validation.md) supersedes the earlier automatic native-gate requirements in this historical investigation.
+Native builds and Maestro are retained as local checks; automatic CI uses domain tests, the production Worklet transform regression, all CanvasKit render variants, and JavaScript exports.
+These checks do not establish native input, GPU, sharing, or performance correctness.
