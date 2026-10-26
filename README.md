@@ -14,7 +14,7 @@ npm run ios
 npm run android
 ```
 
-Expo Go가 아니라 **개발 빌드** 기준입니다. iOS 로컬 실행은 Xcode와 CocoaPods, Android 로컬 실행은 Android SDK/JDK와 에뮬레이터 또는 기기가 필요합니다. GitHub Actions는 서명 없는 iOS Simulator Release와 Android 에뮬레이터용 Release를 빌드합니다. 스토어 배포나 유료 EAS 빌드는 하지 않습니다.
+Expo Go가 아니라 **개발 빌드** 기준입니다. iOS 로컬 실행은 Xcode와 CocoaPods, Android 로컬 실행은 Android SDK/JDK와 에뮬레이터 또는 기기가 필요합니다. GitHub Actions는 Linux에서 품질 검사와 JavaScript 내보내기만 실행하며 네이티브 빌드는 하지 않습니다. 네이티브 빌드와 기기·Maestro 확인은 로컬에서 합니다. 스토어 배포나 유료 EAS 빌드는 하지 않습니다.
 
 ## 구현 범위
 
@@ -77,4 +77,4 @@ See [the CI validation contract](docs/ci-validation.md) for coverage and limits.
 
 ## 검증 경계
 
-한국어 IME 실제 조합, VoiceOver/TalkBack, 물리 기기 60fps·발열, 다른 앱으로의 실제 전달은 별도 기기 검증 대상입니다. CI 에뮬레이터 통과도 이를 대신하지 않습니다. 자세한 체크리스트는 `docs/verification.md`를 참고하세요.
+한국어 IME 실제 조합, VoiceOver/TalkBack, 물리 기기 60fps·발열, 다른 앱으로의 실제 전달은 별도 기기 검증 대상입니다. CI는 네이티브 빌드나 에뮬레이터를 실행하지 않으므로 이를 대신하지 않습니다. 자세한 체크리스트는 `docs/verification.md`를 참고하세요.
