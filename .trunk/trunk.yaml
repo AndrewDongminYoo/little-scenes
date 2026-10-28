@@ -40,6 +40,13 @@ lint:
     - trufflehog@3.99.2
     - yamllint@1.38.0
 actions:
+  definitions:
+    - id: expo-check
+      display_name: expo packages check
+      description: Prompts you about packages that are installed incorrectly
+      run: npx expo install --fix
+      triggers:
+        - git_hooks: [pre-push]
   enabled:
     - trunk-announce
     - trunk-check-pre-push
