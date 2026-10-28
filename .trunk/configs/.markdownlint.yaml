@@ -35,7 +35,7 @@ MD022: false
 # heading-start-left - Headings must start at the beginning of the line
 MD023: false
 # no-duplicate-heading - Multiple headings with the same content
-#MD024: false
+MD024: false
 # single-title/single-h1 - Multiple top-level headings in the same document
 #MD025: false
 # no-trailing-punctuation - Trailing punctuation in heading
@@ -53,7 +53,7 @@ MD031: false
 # blanks-around-lists - Lists should be surrounded by blank lines
 MD032: false
 # no-inline-html - Inline HTML
-#MD033: false
+MD033: false
 # no-bare-urls - Bare URL used
 MD034: false
 # hr-style - Horizontal rule style
@@ -69,7 +69,7 @@ MD035: false
 # fenced-code-language - Fenced code blocks should have a language specified
 #MD040: false
 # first-line-heading/first-line-h1 - First line in a file should be a top-level heading
-#MD041: false
+MD041: false
 # no-empty-links - No empty links
 #MD042: false
 # required-headings - Required heading structure
