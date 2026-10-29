@@ -16,6 +16,7 @@ One Linux `quality` job runs on pull requests and main pushes:
 | Node tests                            | Input validation, settings recovery, clocks, geometry, scene algorithms, write ordering, stale results, and share gating | No native event delivery or route interaction                            |
 | Worklet regression                    | Actual installed production OXC transform of rendering modules                                                           | No native Worklet runtime                                                |
 | CanvasKit renders with `RENDER_ALL=1` | Shared artwork and resource code, Korean fonts, every declared render variant, pixel differences, and letterbox bounds   | No gallery controls, native GPU, or full-screen UI screenshot comparison |
+| Offline scanner adapter tests         | Filesystem JSONL parsing, decoded findings, source locations and failure handling                                        | No live credential verification                                          |
 | Expo dependency checks                | Installed dependency and configuration compatibility                                                                     | No native compilation                                                    |
 | Expo export for all platforms         | iOS, Android, and web JavaScript bundles                                                                                 | No installable native binary                                             |
 

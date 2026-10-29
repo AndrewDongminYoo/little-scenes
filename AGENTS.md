@@ -39,3 +39,11 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## Maintenance quality gate
+
+Run `python3 .trunk/configs/tests/test_trufflehog_to_sarif.py` for the offline secret scanner adapter.
+Trunk uses `--no-verification --no-update` and retains decoded findings without literal source locations.
+Use `trunk check --all --no-fix` for the approved full maintenance scan and explicit paths for formatting, for example `trunk fmt README.md`.
+The renderer always regenerates `assets/previews`; `RENDER_OUT` changes only the separate full-resolution output directory.
+Use a task-owned copy of the render inputs when dependency verification must preserve committed previews.

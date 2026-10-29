@@ -19,6 +19,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Test offline secret scanner adapter
+        run: python3 .trunk/configs/tests/test_trufflehog_to_sarif.py
       - run: mkdir -p evidence
       - run: npm ci
       - run: npm run typecheck && npm run lint && npm test
