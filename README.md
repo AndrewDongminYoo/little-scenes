@@ -40,12 +40,21 @@ npx expo-doctor
 npx expo export --platform all
 ```
 
-`render:check`는 실제 CanvasKit/Skia로 같은 작품 컴포넌트를 렌더링해 `examples/`에 PNG를 생성합니다. `RENDER_ALL=1 RENDER_OUT=<dir>`를 주면 가로쓰기·팔레트·절반 수놓기·낮 장면 변형도 그립니다. 생성형 이미지나 앱 스크린샷이 아닙니다. Linux의 이 검증은 iOS/Android GPU·제스처·OS 공유 검증을 대체하지 않습니다.
+`render:check`는 실제 CanvasKit/Skia로 같은 작품 컴포넌트를 렌더링해 `examples/`에 PNG를 생성합니다. `RENDER_ALL=1 RENDER_OUT=<dir>`를 주면 가로쓰기·팔레트·절반 수놓기·낮 장면 변형도 그립니다. 생성형 이미지나 앱 스크린샷이 아닙니다.
+`RENDER_OUT`은 고해상도 출력 경로만 바꾸며, `assets/previews/`는 항상 다시 생성합니다.
+기존 미리보기를 보존해야 하는 의존성 검증은 렌더 입력을 복사한 별도 검증 디렉터리에서 실행합니다. Linux의 이 검증은 iOS/Android GPU·제스처·OS 공유 검증을 대체하지 않습니다.
 
 `.github/workflows/ci.yml` runs typecheck, lint, domain tests, the production Worklet transform regression, all Skia render variants (`RENDER_ALL=1`), dependency checks, and iOS/Android/Web JavaScript exports on Linux.
 Native builds and Maestro flows are no longer automatic CI gates.
 The retained `.maestro/` flows support local device checks.
 See [the CI validation contract](docs/ci-validation.md) for coverage and limits.
+
+## 유지보수 품질 검사
+
+오프라인 비밀 검사 어댑터는 `python3 .trunk/configs/tests/test_trufflehog_to_sarif.py`로 확인합니다.
+승인된 전체 유지보수 검사에는 `trunk check --all --no-fix`를 사용합니다.
+포맷터에는 `trunk fmt README.md`처럼 작업 대상 경로를 명시합니다.
+의존성 호환 범위와 미해결 취약점은 [호환성 기록](docs/compatibility.md)을 참고하세요.
 
 ## 구조
 
