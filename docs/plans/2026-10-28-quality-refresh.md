@@ -54,4 +54,4 @@ The owned simulator was deleted after the checks.
 The final SDK-compatible graph passed all-platform JavaScript exports and preserved all 15 CanvasKit PNG outputs byte-for-byte.
 The thirteen reader regressions, actual scanner controls and affected knowledge audit passed.
 See the dated maintenance entry in `docs/verification.md` for native coverage and limits.
-Publication still requires the operator's repository-specific approval.
+Publication still requires the user's repository-specific approval.
