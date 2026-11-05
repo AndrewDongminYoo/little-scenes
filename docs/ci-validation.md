@@ -3,7 +3,7 @@
 ## Goal
 
 Keep this learning repository useful with repeatable, inexpensive checks.
-The operator accepted PR #9 despite the unrelated Android scene visibility failure in run `40183456700` and requested a replacement for inconsistent native CI.
+PR #9 was accepted despite the unrelated Android scene visibility failure in run `40183456700`, and a replacement for inconsistent native CI was requested.
 Native build caching is deferred.
 
 ## Automatic checks

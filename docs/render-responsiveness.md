@@ -70,7 +70,7 @@ The follow-up CI preserved the compiled simulator app as a tar archive before th
 Temporary application tracing was removed from final head `05223d5`.
 Run `40183456700` passed quality, iOS repeated playback, the original iOS smoke flow, and native PNG verification.
 Android built, booted, and installed successfully but failed the `scene-embroidery` visibility assertion.
-The operator accepted that known failure and PR #9 merged as `5af351d`; this is not evidence of a recurring iOS pause failure.
+That known failure was accepted and PR #9 merged as `5af351d`; this is not evidence of a recurring iOS pause failure.
 
 ## Automatic CI policy after PR #9
 
