@@ -1,3 +1,4 @@
-[[IgnoredVulns]]
-id = "GHSA-gcqx-w48m-w2h4"
-reason = "deepmerge@4.3.1 has no patched release as of 2026-10-29 (latest 4.3.1; GitHub advisory first_patched_version is null). Installed path: production-declared expo -> @expo/config -> deepmerge, used by Expo configuration/build tooling. Local Expo configuration is repository-controlled; this is accepted residual risk, not a fix or a claim that all production reachability is excluded. Approved by the operator's explicit instruction to ignore unpatched vulnerabilities in this maintenance request. Re-evaluation owner: AndrewDongminYoo. Recheck the advisory and npm audit before publication."
+# No vulnerabilities are suppressed.
+# package.json overrides glob 13.x to >=14.0.2 for GHSA-3g3m-2fjr-6pw4
+# and minimatch 10.x to >=11.0.1 for GHSA-g3hv-75wg-m249, preserving 3.x.
+# Remove each override when its dependents require a patched release.
