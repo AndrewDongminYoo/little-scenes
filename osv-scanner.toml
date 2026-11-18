@@ -1,4 +1,7 @@
-# No vulnerabilities are suppressed.
 # package.json overrides glob 13.x to >=14.0.2 for GHSA-3g3m-2fjr-6pw4
 # and minimatch 10.x to >=11.0.1 for GHSA-g3hv-75wg-m249, preserving 3.x.
 # Remove each override when its dependents require a patched release.
+
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+reason = "picomatch@2.3.2 and picomatch@4.0.7 have no patched release as of 2026-11-18. GitHub advisory data reports no first patched version for the affected range <= 4.0.7, and npm view picomatch versions ends at 4.0.7. Reachability evidence: npm ls picomatch --all reaches it only through build tooling (expo > @expo/cli, @expo/metro-config, @expo/metro > metro-file-map > micromatch, jest-util; react-native > tinyglobby), the app source imports no glob library, and a grep of npx expo export --platform all output (web JS and iOS/Android Hermes bundles) finds no picomatch, micromatch or extglob while an app string matches all three platforms. Re-evaluate before passing user-supplied glob patterns to any tool. Approved on 2026-11-18. Remove when a picomatch release outside the affected range is available."
