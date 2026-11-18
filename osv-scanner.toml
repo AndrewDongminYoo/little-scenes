@@ -1,6 +1,5 @@
-# package.json overrides glob 13.x to >=14.0.2 for GHSA-3g3m-2fjr-6pw4
-# and minimatch 10.x to >=11.0.1 for GHSA-g3hv-75wg-m249, preserving 3.x.
-# Remove each override when its dependents require a patched release.
+# package.json overrides minimatch 10.x to >=11.0.1 for GHSA-g3hv-75wg-m249, preserving 3.x.
+# Remove the override when its dependents require a patched release.
 
 [[IgnoredVulns]]
 id = "GHSA-fc5q-39xc-vjpf"
